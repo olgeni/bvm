@@ -56,7 +56,7 @@ done
 
 OPTIND=1
 
-: ${vm_name} ${vm_os} ${vm_cores} ${vm_memory} ${vm_bridge} ${vm_disk} ${vm_iso}
+: ${vm_name} ${vm_os} ${vm_cores} ${vm_memory} ${vm_bridge} ${vm_mac} ${vm_disk} ${vm_iso}
 
 # -----------------------------------------------------------------
 
@@ -177,11 +177,17 @@ load_bhyve ()
 
 run_bhyve ()
 {
+    local _options_mac=""
+
+    if [ ${vm_mac} != "none" ]; then
+      _options_mac="${_options_mac},mac=${vm_mac}"
+    fi
+
     bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A \
           -l com1,${console} \
           -s 0:0,hostbridge \
           -s 1:0,lpc \
-          -s 2:0,virtio-net,${state_tap} \
+          -s 2:0,virtio-net,${state_tap}${_options_mac} \
           -s 3:0,virtio-blk,${vm_disk} \
           -s 4:0,ahci-cd,${vm_iso} \
           ${vm_name}
