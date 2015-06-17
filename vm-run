@@ -1,0 +1,207 @@
+#!/bin/sh
+
+set -e -u -x
+
+GRUB=/usr/local/sbin/grub-bhyve
+
+# -----------------------------------------------------------------
+
+cleanup ()
+{
+    set +e +u
+
+    bhyvectl --vm=${vm_name} --destroy
+
+    ifconfig "${vm_bridge}" deletem "${state_tap}"
+
+    ifconfig "${state_tap}" destroy
+
+    rm -f ${state_map}
+}
+
+# -----------------------------------------------------------------
+
+kldstat -n vmm >/dev/null 2>&1
+
+trap cleanup EXIT
+
+# -----------------------------------------------------------------
+
+OPTIONS="f:skirc"
+
+OPTIND=1
+
+option_serial=0
+option_exec=0
+option_action=""
+
+while getopts "${OPTIONS}" _option; do
+    case $_option in
+        f) option_file=$(realpath ${OPTARG})
+           . ${option_file}
+           ;;
+        s) option_serial=1
+           ;;
+        k) option_action="kickstart"
+           ;;
+        i) option_action="install"
+           ;;
+        r) option_action="run"
+           ;;
+        c) option_action="cleanup"
+           ;;
+        *)
+    esac
+done
+
+OPTIND=1
+
+: ${vm_name} ${vm_os} ${vm_cores} ${vm_memory} ${vm_bridge} ${vm_disk} ${vm_iso}
+
+# -----------------------------------------------------------------
+
+run_file=/var/run/bhyve-${vm_name}
+
+rm -f ${run_file}
+
+state_tap="$(ifconfig tap create)"
+state_nmdm="nmdm$$"
+
+echo TAP=${state_tap} >> ${run_file}
+
+if ! ifconfig ${vm_bridge} addm ${state_tap}; then
+    ifconfig ${state_tap} destroy || true
+    exit 1
+fi
+
+if [ "${option_serial}" -eq 1 ]; then
+    echo NMDM=${state_nmdm} >> ${run_file}
+    console=/dev/${state_nmdm}A
+else
+    console=stdio
+fi
+
+load_freebsd ()
+{
+    bhyveload -m ${vm_memory}M -d ${vm_disk} ${vm_name}
+}
+
+load_linux ()
+{
+    local _mapfile="$1"
+    local _root="$2"
+    local _directory="$3"
+
+    local _options="-m ${_mapfile}"
+
+    if [ ${_directory} != "none" ]; then
+        _options="${_options} -d ${_directory}"
+    fi
+
+    ${GRUB} -r ${_root} -M ${vm_memory} ${_options} ${vm_name}
+}
+
+load_debian ()
+{
+    mapfile=$(mktemp -t XXXXXX.map)
+
+    cat > ${mapfile} << EOF
+(hd0) ${vm_disk}
+(cd0) ${vm_iso}
+EOF
+
+    case ${option_action} in
+        kickstart)
+            cat << EOF | load_linux ${mapfile} cd0 /nonexistent
+linux /install.amd/vmlinuz install auto=true priority=critical url=${vm_kickstart}
+initrd /install.amd/initrd.gz
+boot
+EOF
+            ;;
+        install)
+            load_linux ${mapfile} cd0 none
+            ;;
+        run)
+            load_linux ${mapfile} hd0,msdos1 /boot/grub
+            ;;
+        *)
+    esac
+
+    rm -f ${mapfile}
+}
+
+load_centos ()
+{
+    mapfile=$(mktemp -t XXXXXX.map)
+
+    cat > ${mapfile} << EOF
+(hd0) ${vm_disk}
+(cd0) ${vm_iso}
+EOF
+
+    case ${option_action} in
+        kickstart)
+            cat << EOF | load_linux ${mapfile} cd0 /nonexistent
+linux /isolinux/vmlinuz ks=${vm_kickstart}
+initrd /isolinux/initrd.img
+boot
+EOF
+            ;;
+        install)
+            load_linux ${mapfile} cd0 none
+            ;;
+        run)
+            load_linux ${mapfile} hd0,msdos1 /grub2
+            ;;
+        *)
+    esac
+
+    rm -f ${mapfile}
+}
+
+load_bhyve ()
+{
+    case ${vm_os} in
+        freebsd*)
+            load_freebsd
+            ;;
+        debian*)
+            load_debian
+            ;;
+        centos*)
+            load_centos
+            ;;
+        *)
+    esac
+}
+
+run_bhyve ()
+{
+    bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A \
+          -l com1,${console} \
+          -s 0:0,hostbridge \
+          -s 1:0,lpc \
+          -s 2:0,virtio-net,${state_tap} \
+          -s 3:0,virtio-blk,${vm_disk} \
+          -s 4:0,ahci-cd,${vm_iso} \
+          ${vm_name}
+}
+
+case ${option_action} in
+    kickstart)
+        load_bhyve
+        run_bhyve
+        ;;
+    install)
+        load_bhyve
+        run_bhyve
+        ;;
+    run)
+        load_bhyve
+        run_bhyve
+        ;;
+    cleanup)
+        cleanup
+        ;;
+    *)
+esac
