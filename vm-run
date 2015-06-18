@@ -2,8 +2,6 @@
 
 set -e -u -x
 
-GRUB=/usr/local/sbin/grub-bhyve
-
 # -----------------------------------------------------------------
 
 cleanup ()
@@ -98,7 +96,7 @@ load_linux ()
         _options="${_options} -d ${_directory}"
     fi
 
-    ${GRUB} -r ${_root} -M ${vm_memory} ${_options} ${vm_name}
+    /usr/local/sbin/grub-bhyve -r ${_root} -M ${vm_memory} ${_options} ${vm_name}
 }
 
 load_debian ()
