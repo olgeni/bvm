@@ -8,11 +8,13 @@ check_bridge ()
 {
     local _bridge="$1"
 
-    ifconfig -l ether | rs 0 1 | grep "^${_bridge}\$"
+    ifconfig -l ether | rs 0 1 | grep "^${_bridge}\$" >/dev/null 2>&1
 }
 
 finish ()
 {
+    . ${run_file}
+
     if [ -e /dev/vmm/${vm_name} ]; then
         bhyvectl --vm=${vm_name} --destroy
     fi
@@ -168,8 +170,6 @@ bhyve_exec ()
 
 kldstat -n vmm >/dev/null 2>&1
 
-trap finish EXIT
-
 case "$1" in
     kickstart)
         action="$1"
@@ -228,6 +228,10 @@ esac
 
 if [ ! -e ${vm_disk} ]; then
     exit 1
+fi
+
+if [ -e /dev/vmm/${vm_name} ]; then
+    bhyvectl --vm=${vm_name} --destroy
 fi
 
 # -----------------------------------------------------------------
