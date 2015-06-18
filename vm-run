@@ -212,6 +212,7 @@ done
 # -----------------------------------------------------------------
 
 if ! check_bridge ${vm_bridge}; then
+    exit 1
 fi
 
 case ${vm_os} in
