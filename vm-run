@@ -36,7 +36,6 @@ option_action=""
 while getopts "${OPTIONS}" _option; do
     case $_option in
         f) option_file=$(realpath ${OPTARG})
-           . ${option_file}
            ;;
         s) option_serial=1
            ;;
@@ -53,6 +52,8 @@ while getopts "${OPTIONS}" _option; do
 done
 
 OPTIND=1
+
+. ${option_file}
 
 : ${vm_name} ${vm_os} ${vm_cores} ${vm_memory} ${vm_bridge} ${vm_mac} ${vm_disk} ${vm_iso}
 
