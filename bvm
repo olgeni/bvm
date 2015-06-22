@@ -163,7 +163,13 @@ bhyve_exec ()
         _devices="${_devices} -s 31:0,ahci-cd,${option_iso}"
     fi
 
-    exec bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -l com1,${option_console} ${_devices} ${vm_name}
+    local _exec=""
+
+    if [ -n "${option_exec}" ]; then
+        _exec="exec "
+    fi
+
+    ${_exec} bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -l com1,${option_console} ${_devices} ${vm_name}
 }
 
 # -----------------------------------------------------------------
@@ -190,8 +196,9 @@ shift
 
 option_iso=""
 option_console=stdio
+option_exec=""
 
-while getopts "f:i:u:s" _option; do
+while getopts "f:i:u:sx" _option; do
     case ${_option} in
         f) option_file=$(realpath ${OPTARG})
            ;;
@@ -200,6 +207,8 @@ while getopts "f:i:u:s" _option; do
         u) option_url=${OPTARG}
            ;;
         s) option_console=/dev/nmdm$$A
+           ;;
+        x) option_exec=YES
            ;;
         *)
     esac
@@ -255,6 +264,8 @@ if ! ifconfig ${vm_bridge} addm ${state_tap}; then
 fi
 
 echo state_tap=${state_tap} >> ${run_file}
+
+trap finish EXIT
 
 bhyve_load
 bhyve_exec
