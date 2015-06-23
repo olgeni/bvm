@@ -97,7 +97,7 @@ bhyve_load_centos ()
         install)
             grub_load ${mapfile} cd0 none
             ;;
-        run)
+        exec)
             grub_load ${mapfile} hd0,msdos1 /grub2
             ;;
         *)
@@ -119,7 +119,7 @@ bhyve_load_debian ()
         install)
             grub_load ${mapfile} cd0 none
             ;;
-        run)
+        exec)
             grub_load ${mapfile} hd0,msdos1 /boot/grub
             ;;
         *)
@@ -183,7 +183,7 @@ case "$1" in
     install)
         action="$1"
         ;;
-    run)
+    exec)
         action="$1"
         ;;
     finish)
