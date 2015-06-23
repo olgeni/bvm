@@ -70,7 +70,7 @@ bhyve_load_freebsd ()
 
 bhyve_load_centos ()
 {
-    mapfile=$(mktemp -t XXXXXX.map)
+    mapfile=$(mktemp -t bvm-mapfile)
 
     grub_create_map ${mapfile}
 
@@ -92,7 +92,7 @@ bhyve_load_centos ()
 
 bhyve_load_debian ()
 {
-    mapfile=$(mktemp -t XXXXXX.map)
+    mapfile=$(mktemp -t bvm-mapfile)
 
     grub_create_map ${mapfile}
 
@@ -160,10 +160,6 @@ perform_kickstart ()
 {
     [ -f ${option_iso} ] || return 1
 
-    if [ ${option_console} = "stdio" ]; then
-        [ -t 0 ] || return 1
-    fi
-
     perform_exec
 }
 
@@ -171,16 +167,19 @@ perform_install ()
 {
     [ -f ${option_iso} ] || return 1
 
-    if [ ${option_console} = "stdio" ]; then
-        [ -t 0 ] || return 1
-    fi
-
     perform_exec
 }
 
 perform_exec ()
 {
     rm -f ${run_file}
+
+    if [ ${option_console} = "stdio" ]; then
+        [ -t 0 ] || return 1
+    else
+        rm -f ${console_file}
+        ln -s -f ${option_console%A}B ${console_file}
+    fi
 
     state_tap="$(ifconfig tap create)"
 
@@ -212,6 +211,10 @@ perform_finish ()
 
     if [ -e ${run_file} ]; then
         rm -f ${run_file}
+    fi
+
+    if [ -e ${console_file} ]; then
+        rm -f ${console_file}
     fi
 }
 
@@ -302,7 +305,8 @@ shift $((${OPTIND} - 1))
 
 : ${vm_name} ${vm_os} ${vm_cores} ${vm_memory} ${vm_bridge} ${vm_mac} ${vm_disk}
 
-run_file=/var/run/bhyve-${vm_name}
+run_file=/var/run/bvm-${vm_name}
+console_file=/var/run/bvm-tty-${vm_name}
 
 # -----------------------------------------------------------------
 
