@@ -2,6 +2,8 @@
 
 set -e -u
 
+BVM_PATH=$(dirname $(realpath $0))
+
 # -----------------------------------------------------------------
 
 check_bridge ()
@@ -9,24 +11,6 @@ check_bridge ()
     local _bridge="$1"
 
     ifconfig -l ether | rs 0 1 | grep "^${_bridge}\$" >/dev/null 2>&1
-}
-
-finish ()
-{
-    . ${run_file}
-
-    if [ -e /dev/vmm/${vm_name} ]; then
-        bhyvectl --vm=${vm_name} --destroy
-    fi
-
-    if [ -n "${state_tap}" ]; then
-        ifconfig "${vm_bridge}" deletem "${state_tap}"
-        ifconfig "${state_tap}" destroy
-    fi
-
-    if [ -e ${run_file} ]; then
-        rm -f ${run_file}
-    fi
 }
 
 grub_for_centos_install ()
@@ -172,6 +156,101 @@ bhyve_exec ()
     ${_exec} bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -l com1,${option_console} ${_devices} ${vm_name}
 }
 
+perform_kickstart ()
+{
+    [ -f ${option_iso} ] || return 1
+
+    if [ ${option_console} = "stdio" ]; then
+        [ -t 0 ] || return 1
+    fi
+
+    perform_exec
+}
+
+perform_install ()
+{
+    [ -f ${option_iso} ] || return 1
+
+    if [ ${option_console} = "stdio" ]; then
+        [ -t 0 ] || return 1
+    fi
+
+    perform_exec
+}
+
+perform_exec ()
+{
+    rm -f ${run_file}
+
+    state_tap="$(ifconfig tap create)"
+
+    if ! ifconfig ${vm_bridge} addm ${state_tap}; then
+        ifconfig ${state_tap} destroy || true
+        exit 1
+    fi
+
+    echo state_tap=${state_tap} >> ${run_file}
+
+    trap perform_finish EXIT
+
+    bhyve_load
+    bhyve_exec
+}
+
+perform_finish ()
+{
+    . ${run_file}
+
+    if [ -e /dev/vmm/${vm_name} ]; then
+        bhyvectl --vm=${vm_name} --destroy
+    fi
+
+    if [ -n "${state_tap}" ]; then
+        ifconfig "${vm_bridge}" deletem "${state_tap}"
+        ifconfig "${state_tap}" destroy
+    fi
+
+    if [ -e ${run_file} ]; then
+        rm -f ${run_file}
+    fi
+}
+
+perform_svinstall ()
+{
+    local _service=/usr/local/etc/sv/${vm_name}
+
+    mkdir -p ${_service}
+    mkdir -p ${_service}/log
+
+    install -m 600 ${option_file} ${_service}/bvm.conf
+
+    cat << EOF > ${_service}/log/run
+#!/bin/sh
+
+mkdir -p main
+
+exec chpst svlogd -tt ./main
+EOF
+
+    chmod 755 ${_service}/log/run
+
+    cat << EOF > ${_service}/run
+#!/bin/sh
+
+${BVM_PATH}/bvm exec -f bvm.conf -s -x
+EOF
+
+    chmod 755 ${_service}/run
+
+    cat << EOF > ${_service}/finish
+#!/bin/sh
+
+${BVM_PATH}/bvm finish -f bvm.conf
+EOF
+
+    chmod 755 ${_service}/finish
+}
+
 # -----------------------------------------------------------------
 
 kldstat -n vmm >/dev/null 2>&1
@@ -187,6 +266,9 @@ case "$1" in
         action="$1"
         ;;
     finish)
+        action="$1"
+        ;;
+    svinstall)
         action="$1"
         ;;
     *)
@@ -214,9 +296,13 @@ while getopts "f:i:u:sx" _option; do
     esac
 done
 
+shift $((${OPTIND} - 1))
+
 . ${option_file}
 
 : ${vm_name} ${vm_os} ${vm_cores} ${vm_memory} ${vm_bridge} ${vm_mac} ${vm_disk}
+
+run_file=/var/run/bhyve-${vm_name}
 
 # -----------------------------------------------------------------
 
@@ -226,11 +312,11 @@ fi
 
 case ${vm_os} in
     freebsd)
-        ;;
+    ;;
     centos)
-        ;;
+    ;;
     debian)
-        ;;
+    ;;
     *)
         exit 1
 esac
@@ -245,27 +331,4 @@ fi
 
 # -----------------------------------------------------------------
 
-run_file=/var/run/bhyve-${vm_name}
-
-if [ "${action}" == finish ]; then
-    finish
-    exit 0
-fi
-
-# -----------------------------------------------------------------
-
-rm -f ${run_file}
-
-state_tap="$(ifconfig tap create)"
-
-if ! ifconfig ${vm_bridge} addm ${state_tap}; then
-    ifconfig ${state_tap} destroy || true
-    exit 1
-fi
-
-echo state_tap=${state_tap} >> ${run_file}
-
-trap finish EXIT
-
-bhyve_load
-bhyve_exec
+perform_${action} "$@"
