@@ -169,7 +169,7 @@ bhyve_exec ()
         _console="/dev/nmdm${state_tap#tap}A"
     fi
 
-    ${_exec} bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -l com1,${_console} ${_devices} ${vm_name}
+    ${_exec} bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -u -l com1,${_console} ${_devices} ${vm_name}
 }
 
 perform_kickstart ()
