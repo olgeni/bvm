@@ -1,0 +1,7 @@
+vm_name=aculab
+vm_os=centos
+vm_cores=2
+vm_memory=1024
+vm_bridge=bridge1
+vm_mac=58:9c:fc:00:01:01
+vm_disk=/dev/zvol/storage/smsc/aculab

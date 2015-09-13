@@ -1,0 +1,7 @@
+vm_name=mnp-02
+vm_os=debian
+vm_cores=1
+vm_memory=1024
+vm_bridge=bridge0
+vm_mac=58:9c:fc:00:00:0C
+vm_disk=/dev/zvol/storage/delibird/mnp-02
