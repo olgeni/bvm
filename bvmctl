@@ -1,0 +1,75 @@
+#!/bin/sh
+
+set -e -u
+
+vm_root_fs=$(zfs get -H -o value,name bvm:active | awk '$1 == "on" { print $2 }' | head -n 1)
+
+# -----------------------------------------------------------------
+
+error ()
+{
+    echo "$@"
+    exit 1
+}
+
+check_property ()
+{
+    [ "$1" = "cores"  ] && return 0
+    [ "$1" = "memory" ] && return 0
+    [ "$1" = "os"     ] && return 0
+    [ "$1" = "ifmac"  ] && return 0
+
+    error "Invalid property: $1"
+}
+
+perform_set ()
+{
+    local _vm_name="$1"
+    local _property="$2"
+    local _value="$3"
+
+    local _vm_fs="${vm_root_fs}/${_vm_name}"
+
+    check_property ${_property}
+
+    zfs set bvm:${_property}=${_value} ${_vm_fs}
+}
+
+perform_create ()
+{
+    local _vm_name="$1"
+    local _vm_fs="${vm_root_fs}/${_vm_name}"
+
+    zfs create ${vm_root_fs}/${_vm_name}
+
+    zfs set bvm:cores=1 ${_vm_fs}
+    zfs set bvm:memory=1024 ${_vm_fs}
+    zfs set bvm:os=freebsd ${_vm_fs}
+    zfs set bvm:ifmac=none ${_vm_fs}
+}
+
+perform_destroy ()
+{
+    local _vm_name="$1"
+    local _vm_fs="${vm_root_fs}/${_vm_name}"
+
+    zfs destroy -rv ${_vm_fs}
+}
+
+perform_add_disk ()
+{
+    local _vm_name="$1"
+    local _vm_fs="${vm_root_fs}/${_vm_name}"
+    local _vol_size="$2"
+
+    zfs create -b 4K -V ${_vol_size} ${_vm_fs}/disk0
+}
+
+action="$1"
+
+shift
+
+perform_${action} "$@"
+
+# zfs create -o canmount=off storage/vmm
+# zfs set bvm:active=on storage/vmm
