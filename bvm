@@ -6,8 +6,9 @@ BVM_PATH=$(dirname $(realpath $0))
 
 vm_root_fs=$(zfs get -H -o value,name bvm:active | awk '$1 == "on" { print $2 }' | head -n 1)
 
-option_serial=""
 option_exec=""
+option_iso=""
+option_serial=""
 
 # -----------------------------------------------------------------
 
