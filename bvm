@@ -158,6 +158,7 @@ bhyve_load ()
             bhyve_load_debian
             ;;
         *)
+            error "Operating system not supported: ${vm_os}."
     esac
 }
 
@@ -333,20 +334,5 @@ vm_disk=/dev/zvol/${vm_fs}/disk0
 : ${vm_name} ${vm_os} ${vm_cores} ${vm_memory} ${vm_ifmac}
 
 : ${vm_bridge:=bridge0}
-
-# -----------------------------------------------------------------
-
-case ${vm_os} in
-    freebsd)
-    ;;
-    centos)
-    ;;
-    debian)
-    ;;
-    *)
-        error "Operating system not supported: ${vm_os}."
-esac
-
-# -----------------------------------------------------------------
 
 perform_${action} "$@"
