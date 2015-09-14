@@ -259,31 +259,6 @@ perform_connect ()
     fi
 }
 
-perform_svinstall ()
-{
-    local _service=/usr/local/etc/sv/${vm_name}
-
-    mkdir -p ${_service}
-
-    cat << EOF > ${_service}/run
-#!/bin/sh
-
-exec 2>&1
-exec ${BVM_PATH}/bvm exec -n ${vm_name} -s -x
-EOF
-
-    chmod 755 ${_service}/run
-
-    cat << EOF > ${_service}/finish
-#!/bin/sh
-
-exec 2>&1
-exec ${BVM_PATH}/bvm finish -n ${vm_name}
-EOF
-
-    chmod 755 ${_service}/finish
-}
-
 get_property ()
 {
     zfs get -H -o value bvm:${1} ${vm_fs}
