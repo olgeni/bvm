@@ -75,7 +75,7 @@ grub_load ()
 
     if [ "${action}" != kickstart ]; then
         if [ -n "${option_serial}" ]; then
-            _options="${_options} -c /dev/nmdm-${vm_name}A"
+            _options="${_options} -c /dev/nmdm-${vm_name}-A"
         fi
     fi
 
@@ -191,7 +191,7 @@ bhyve_exec ()
     local _console="stdio"
 
     if [ -n "${option_serial}" ]; then
-        _console="/dev/nmdm-${vm_name}A"
+        _console="/dev/nmdm-${vm_name}-A"
     fi
 
     ${_exec} bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -u -l com1,${_console} ${_devices} ${vm_name}
@@ -252,7 +252,7 @@ perform_finish ()
 
 perform_connect ()
 {
-    local _device="/dev/nmdm-${vm_name}B"
+    local _device="/dev/nmdm-${vm_name}-B"
 
     if [ -c ${_device} ]; then
         kermit -l ${_device}
