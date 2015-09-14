@@ -1,5 +1,7 @@
 #!/bin/sh
 
+POOL_NAME=storage
+
 set -e -u
 
 BVM_PATH=$(dirname $(realpath $0))
@@ -19,7 +21,7 @@ check_bridge ()
     ifconfig -l ether | rs 0 1 | grep "^${_bridge}\$" >/dev/null 2>&1
 }
 
-grub_for_centos_install ()
+grub_for_centos_kickstart ()
 {
     cat << EOF
 linux /isolinux/vmlinuz ks=${option_url}
@@ -28,10 +30,28 @@ boot
 EOF
 }
 
-grub_for_debian_install ()
+grub_for_centos_install ()
+{
+    cat << EOF
+linux /isolinux/vmlinuz
+initrd /isolinux/initrd.img
+boot
+EOF
+}
+
+grub_for_debian_kickstart ()
 {
     cat << EOF
 linux /install.amd/vmlinuz install auto=true priority=critical url=${option_url}
+initrd /install.amd/initrd.gz
+boot
+EOF
+}
+
+grub_for_debian_install ()
+{
+    cat << EOF
+linux /install.amd/vmlinuz
 initrd /install.amd/initrd.gz
 boot
 EOF
@@ -51,7 +71,7 @@ grub_load ()
 
     if [ "${action}" != kickstart ]; then
         if [ -n "${option_serial}" ]; then
-            _options="${_options} -c /dev/nmdm${state_tap#tap}A"
+            _options="${_options} -c /dev/nmdm-${vm_name}A"
         fi
     fi
 
@@ -69,7 +89,7 @@ grub_create_map ()
     echo "(hd0) ${vm_disk}" > ${_mapfile}
 
     if [ -n "${option_iso}" ]; then
-        echo "(cd0) ${option_iso}" > ${_mapfile}
+        echo "(cd0) ${option_iso}" >> ${_mapfile}
     fi
 }
 
@@ -86,10 +106,10 @@ bhyve_load_centos ()
 
     case ${action} in
         kickstart)
-            grub_for_centos_install | grub_load ${mapfile} cd0 /nonexistent
+            grub_for_centos_kickstart | grub_load ${mapfile} cd0 /nonexistent
             ;;
         install)
-            grub_load ${mapfile} cd0 none
+            grub_for_centos_install | grub_load ${mapfile} cd0 /nonexistent
             ;;
         exec)
             grub_load ${mapfile} hd0,msdos1 /grub2
@@ -108,10 +128,10 @@ bhyve_load_debian ()
 
     case ${action} in
         kickstart)
-            grub_for_debian_install | grub_load ${mapfile} cd0 /nonexistent
+            grub_for_debian_kickstart | grub_load ${mapfile} cd0 /nonexistent
             ;;
         install)
-            grub_load ${mapfile} cd0 none
+            grub_for_debian_install | grub_load ${mapfile} cd0 /nonexistent
             ;;
         exec)
             grub_load ${mapfile} hd0,msdos1 /boot/grub
@@ -142,7 +162,7 @@ bhyve_exec ()
 {
     local _mac=""
 
-    if [ "${vm_mac}" != "none" ]; then
+    if [ "${vm_mac}" != "-" ]; then
         _mac="${_mac},mac=${vm_mac}"
     fi
 
@@ -166,7 +186,7 @@ bhyve_exec ()
     local _console="stdio"
 
     if [ -n "${option_serial}" ]; then
-        _console="/dev/nmdm${state_tap#tap}A"
+        _console="/dev/nmdm-${vm_name}A"
     fi
 
     ${_exec} bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -u -l com1,${_console} ${_devices} ${vm_name}
@@ -177,6 +197,8 @@ perform_kickstart ()
     [ -e ${option_iso} ] || error "ISO image not found: ${option_iso}."
 
     perform_exec
+
+    zfs snapshot ${vm_fs}@install
 }
 
 perform_install ()
@@ -184,12 +206,12 @@ perform_install ()
     [ -e ${option_iso} ] || error "ISO image not found: ${option_iso}."
 
     perform_exec
+
+    zfs snapshot ${vm_fs}@install
 }
 
 perform_exec ()
 {
-    rm -f ${run_file}
-
     if [ -z "${option_serial}" ]; then
         [ -t 0 ] || error "A terminal is required when using the stdio console."
     fi
@@ -201,7 +223,7 @@ perform_exec ()
         error "Could not add interface ${state_tap} to bridge ${vm_bridge}."
     fi
 
-    echo state_tap=${state_tap} >> ${run_file}
+    set_property interface ${state_tap}
 
     trap perform_finish EXIT
 
@@ -211,32 +233,19 @@ perform_exec ()
 
 perform_finish ()
 {
-    [ -e ${run_file} ] || error "Missing run file: ${run_file}."
-
-    . ${run_file}
-
     if [ -e /dev/vmm/${vm_name} ]; then
         bhyvectl --vm=${vm_name} --destroy
     fi
 
-    if [ -n "${state_tap}" ]; then
-        ifconfig "${vm_bridge}" deletem "${state_tap}" || true
-        ifconfig "${state_tap}" destroy
-    fi
+    state_tap=$(get_property interface)
 
-    # rm -f /dev/nmdm${state_tap#tap}A
-    # rm -f /dev/nmdm${state_tap#tap}B
-
-    rm -f ${run_file}
+    ifconfig "${vm_bridge}" deletem "${state_tap}" || true
+    ifconfig "${state_tap}" destroy
 }
 
 perform_connect ()
 {
-    [ -e ${run_file} ] || error "Missing run file: ${run_file}."
-
-    . ${run_file}
-
-    local _device=/dev/nmdm${state_tap#tap}B
+    local _device="/dev/nmdm-${vm_name}B"
 
     if [ -c ${_device} ]; then
         kermit -l ${_device}
@@ -249,13 +258,11 @@ perform_svinstall ()
 
     mkdir -p ${_service}
 
-    install -m 600 ${option_file} ${_service}/bvm.conf
-
     cat << EOF > ${_service}/run
 #!/bin/sh
 
 exec 2>&1
-exec ${BVM_PATH}/bvm exec -f bvm.conf -s -x
+exec ${BVM_PATH}/bvm exec -n ${vm_name} -s -x
 EOF
 
     chmod 755 ${_service}/run
@@ -264,47 +271,36 @@ EOF
 #!/bin/sh
 
 exec 2>&1
-exec ${BVM_PATH}/bvm finish -f bvm.conf
+exec ${BVM_PATH}/bvm finish -n ${vm_name}
 EOF
 
     chmod 755 ${_service}/finish
+}
+
+get_property ()
+{
+    zfs get -H -o value bvm:${1} ${vm_fs}
+}
+
+set_property ()
+{
+    zfs set bvm:${1}=${2} ${vm_fs}
 }
 
 # -----------------------------------------------------------------
 
 kldstat -n vmm >/dev/null 2>&1 || error "Missing kernel module: vmm."
 
-case "$1" in
-    kickstart)
-        action="$1"
-        ;;
-    install)
-        action="$1"
-        ;;
-    exec)
-        action="$1"
-        ;;
-    finish)
-        action="$1"
-        ;;
-    connect)
-        action="$1"
-        ;;
-    svinstall)
-        action="$1"
-        ;;
-    *)
-esac
+action="$1"
 
 shift
 
-option_iso=""
 option_serial=""
 option_exec=""
 
-while getopts "f:i:u:sx" _option; do
+while getopts "n:i:u:sx" _option; do
     case ${_option} in
-        f) option_file=${OPTARG}
+        n) vm_name=${OPTARG}
            ;;
         i) option_iso=${OPTARG}
            ;;
@@ -320,13 +316,19 @@ done
 
 shift $((${OPTIND} - 1))
 
-[ -e ${option_file} ] || error "Missing option file: ${option_file}."
+vm_fs=${POOL_NAME}/vmm/${vm_name}
 
-. ${option_file}
+vm_os=$(get_property os)
+vm_cores=$(get_property cores)
+vm_memory=$(get_property memory)
+vm_mac=$(get_property ifmac)
+vm_bridge=$(get_property bridge)
 
-: ${vm_name} ${vm_os} ${vm_cores} ${vm_memory} ${vm_bridge} ${vm_mac} ${vm_disk}
+vm_disk=/dev/zvol/${POOL_NAME}/vmm/${vm_name}/disk0
 
-run_file=/var/run/bvm-${vm_name}
+: ${vm_name} ${vm_os} ${vm_cores} ${vm_memory} ${vm_mac} ${vm_disk}
+
+: ${vm_bridge:=bridge0}
 
 # -----------------------------------------------------------------
 
@@ -348,3 +350,12 @@ esac
 # -----------------------------------------------------------------
 
 perform_${action} "$@"
+
+# zfs create -o canmount=off storage/vmm
+# zfs set bvm:active=on storage/vmm
+# zfs create storage/vmm/frontend-01
+# zfs create -b 4K -V 30G storage/vmm/frontend-01/disk0
+# zfs set bvm:cores=2 storage/vmm/frontend-01
+# zfs set bvm:memory=1024 storage/vmm/frontend-01
+# zfs set bvm:os=centos storage/vmm/frontend-01
+# zfs set bvm:mac=58:9c:fc:00:01:01 storage/vmm/frontend-01
