@@ -60,7 +60,7 @@ perform_add_disk ()
     local _vm_fs="${vm_root_fs}/${_vm_name}"
     local _vol_size="$2"
 
-    zfs create -b 4K -V ${_vol_size} ${_vm_fs}/disk0
+    zfs create -b 4K -V ${_vol_size} -o compression=lz4 ${_vm_fs}/disk0
 }
 
 action="$1"
