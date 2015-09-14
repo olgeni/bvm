@@ -19,7 +19,7 @@ check_property ()
     [ "$1" = "os"     ] && return 0
     [ "$1" = "ifmac"  ] && return 0
 
-    error "Invalid property: $1"
+    error "Invalid property: $1."
 }
 
 perform_set ()
