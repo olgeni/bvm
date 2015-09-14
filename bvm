@@ -1,10 +1,13 @@
 #!/bin/sh
 
-POOL_NAME=storage
-
 set -e -u
 
 BVM_PATH=$(dirname $(realpath $0))
+
+vm_root_fs=$(zfs get -H -o value,name bvm:active | awk '$1 == "on" { print $2 }' | head -n 1)
+
+option_serial=""
+option_exec=""
 
 # -----------------------------------------------------------------
 
@@ -162,8 +165,8 @@ bhyve_exec ()
 {
     local _mac=""
 
-    if [ "${vm_mac}" != "-" ]; then
-        _mac="${_mac},mac=${vm_mac}"
+    if [ "${vm_ifmac}" != "none" ]; then
+        _mac="${_mac},mac=${vm_ifmac}"
     fi
 
     local _devices=""
@@ -215,6 +218,8 @@ perform_exec ()
     if [ -z "${option_serial}" ]; then
         [ -t 0 ] || error "A terminal is required when using the stdio console."
     fi
+
+    check_bridge ${vm_bridge} || error "Bridge interface does not exist: ${vm_bridge}."
 
     state_tap="$(ifconfig tap create)"
 
@@ -295,9 +300,6 @@ action="$1"
 
 shift
 
-option_serial=""
-option_exec=""
-
 while getopts "n:i:u:sx" _option; do
     case ${_option} in
         n) vm_name=${OPTARG}
@@ -316,23 +318,23 @@ done
 
 shift $((${OPTIND} - 1))
 
-vm_fs=${POOL_NAME}/vmm/${vm_name}
+vm_fs=${vm_root_fs}/${vm_name}
 
 vm_os=$(get_property os)
 vm_cores=$(get_property cores)
 vm_memory=$(get_property memory)
-vm_mac=$(get_property ifmac)
+vm_ifmac=$(get_property ifmac)
 vm_bridge=$(get_property bridge)
 
-vm_disk=/dev/zvol/${POOL_NAME}/vmm/${vm_name}/disk0
+vm_disk=/dev/zvol/${vm_fs}/disk0
 
-: ${vm_name} ${vm_os} ${vm_cores} ${vm_memory} ${vm_mac} ${vm_disk}
+[ -e ${vm_disk} ] || error "Missing disk image: ${vm_disk}."
+
+: ${vm_name} ${vm_os} ${vm_cores} ${vm_memory} ${vm_ifmac}
 
 : ${vm_bridge:=bridge0}
 
 # -----------------------------------------------------------------
-
-check_bridge ${vm_bridge} || error "Bridge interface does not exist: ${vm_bridge}."
 
 case ${vm_os} in
     freebsd)
@@ -345,17 +347,6 @@ case ${vm_os} in
         error "Operating system not supported: ${vm_os}."
 esac
 
-[ -e ${vm_disk} ] || error "Missing disk image: ${vm_disk}."
-
 # -----------------------------------------------------------------
 
 perform_${action} "$@"
-
-# zfs create -o canmount=off storage/vmm
-# zfs set bvm:active=on storage/vmm
-# zfs create storage/vmm/frontend-01
-# zfs create -b 4K -V 30G storage/vmm/frontend-01/disk0
-# zfs set bvm:cores=2 storage/vmm/frontend-01
-# zfs set bvm:memory=1024 storage/vmm/frontend-01
-# zfs set bvm:os=centos storage/vmm/frontend-01
-# zfs set bvm:mac=58:9c:fc:00:01:01 storage/vmm/frontend-01
