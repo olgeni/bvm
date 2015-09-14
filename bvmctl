@@ -2,6 +2,12 @@
 
 set -e -u
 
+DEFAULT_BRIDGE=bridge0
+DEFAULT_CORES=1
+DEFAULT_IFMAC=none
+DEFAULT_MEMORY=1024
+DEFAULT_OS=freebsd
+
 vm_root_fs=$(zfs get -H -o value,name bvm:active | awk '$1 == "on" { print $2 }' | head -n 1)
 
 error ()
@@ -40,10 +46,11 @@ perform_create ()
 
     zfs create ${vm_root_fs}/${_vm_name}
 
-    zfs set bvm:cores=1 ${_vm_fs}
-    zfs set bvm:memory=1024 ${_vm_fs}
-    zfs set bvm:os=freebsd ${_vm_fs}
-    zfs set bvm:ifmac=none ${_vm_fs}
+    zfs set bvm:bridge=${DEFAULT_BRIDGE} ${_vm_fs}
+    zfs set bvm:cores=${DEFAULT_CORES}   ${_vm_fs}
+    zfs set bvm:ifmac=${DEFAULT_IFMAC}   ${_vm_fs}
+    zfs set bvm:memory=${DEFAULT_MEMORY} ${_vm_fs}
+    zfs set bvm:os=${DEFAULT_OS}         ${_vm_fs}
 }
 
 perform_destroy ()
