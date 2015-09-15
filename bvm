@@ -278,6 +278,8 @@ perform_finish ()
 
     state_tap=$(get_property interface)
 
+    del_property interface
+
     ifconfig "${state_tap}" destroy
 }
 
