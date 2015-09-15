@@ -301,6 +301,11 @@ set_property ()
     zfs set bvm:${1}=${2} ${vm_fs}
 }
 
+del_property ()
+{
+    zfs inherit bvm:${1} ${vm_fs}
+}
+
 # -----------------------------------------------------------------
 
 kldstat -n vmm >/dev/null 2>&1 || error "Missing kernel module: vmm."
