@@ -278,7 +278,6 @@ perform_finish ()
 
     state_tap=$(get_property interface)
 
-    ifconfig "${vm_bridge}" deletem "${state_tap}" || true
     ifconfig "${state_tap}" destroy
 }
 
