@@ -25,6 +25,11 @@ check_bridge ()
     ifconfig -l ether | rs 0 1 | grep "^${_bridge}\$" >/dev/null 2>&1
 }
 
+nmdm_base ()
+{
+    echo "/dev/nmdm-${vm_name}"
+}
+
 grub_for_centos_kickstart ()
 {
     cat << EOF
@@ -75,7 +80,7 @@ grub_load ()
 
     if [ "${action}" != kickstart ]; then
         if [ -n "${option_serial}" ]; then
-            _options="${_options} -c /dev/nmdm-${vm_name}-A"
+            _options="${_options} -c $(nmdm_base)-A"
         fi
     fi
 
@@ -216,7 +221,7 @@ bhyve_exec ()
     local _console="stdio"
 
     if [ -n "${option_serial}" ]; then
-        _console="/dev/nmdm-${vm_name}-A"
+        _console="$(nmdm_base)-A"
     fi
 
     ${_exec} bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -u -l com1,${_console} ${_devices} ${vm_name}
@@ -279,7 +284,7 @@ perform_finish ()
 
 perform_connect ()
 {
-    local _device="/dev/nmdm-${vm_name}-B"
+    local _device="$(nmdm_base)-B"
 
     if [ -c ${_device} ]; then
         kermit -l ${_device}
