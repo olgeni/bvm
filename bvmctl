@@ -70,7 +70,19 @@ perform_add_disk ()
     local _vm_fs="${vm_root_fs}/${_vm_name}"
     local _vol_size="$2"
 
-    zfs create -b 4K -V ${_vol_size} -o compression=lz4 ${_vm_fs}/disk0
+    [ -n "${_vol_size}" ] || error "Invalid volume size: ${_vol_size}."
+
+    local _index=0
+
+    while true; do
+        if [ -e /dev/zvol/${_vm_fs}/disk${_index} ]; then
+            _index=$((${_index} + 1))
+        else
+            break
+        fi
+    done
+
+    zfs create -b 4K -o volmode=dev -V ${_vol_size} -o compression=lz4 ${_vm_fs}/disk${_index}
 }
 
 perform_svinstall ()
