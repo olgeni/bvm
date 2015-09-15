@@ -90,7 +90,7 @@ grub_create_map ()
 {
     local _mapfile="$1"
 
-    echo "(hd0) ${vm_disk}" > ${_mapfile}
+    echo "(hd0) ${vm_boot_image}" > ${_mapfile}
 
     if [ -n "${option_iso}" ]; then
         echo "(cd0) ${option_iso}" >> ${_mapfile}
@@ -99,7 +99,18 @@ grub_create_map ()
 
 bhyve_load_freebsd ()
 {
-    bhyveload -m ${vm_memory}M -d ${vm_disk} ${vm_name}
+    case ${action} in
+        kickstart)
+            bhyveload -m ${vm_memory}M -d ${option_iso} ${vm_name}
+            ;;
+        install)
+            bhyveload -m ${vm_memory}M -d ${option_iso} ${vm_name}
+            ;;
+        exec)
+            bhyveload -m ${vm_memory}M -d ${vm_boot_image} ${vm_name}
+            ;;
+        *)
+    esac
 }
 
 bhyve_load_centos ()
@@ -176,7 +187,21 @@ bhyve_exec ()
     _devices="${_devices} -s 0:0,hostbridge"
     _devices="${_devices} -s 1:0,lpc"
     _devices="${_devices} -s 2:0,virtio-net,${state_tap}${_mac}"
-    _devices="${_devices} -s 3:0,virtio-blk,${vm_disk}"
+
+    local _index=0
+    local _slot=3
+
+    while true; do
+        local _disk=/dev/zvol/${vm_fs}/disk${_index}
+
+        if [ -e ${_disk} ]; then
+            _devices="${_devices} -s ${_slot}:0,virtio-blk,${_disk}"
+            _index=$((${_index} + 1))
+            _slot=$((${_slot} + 1))
+        else
+            break
+        fi
+    done
 
     if [ -n "${option_iso}" ]; then
         _devices="${_devices} -s 31:0,ahci-cd,${option_iso}"
@@ -305,10 +330,11 @@ vm_memory=$(get_property memory)
 vm_ifmac=$(get_property ifmac)
 vm_bridge=$(get_property bridge)
 
-vm_disk=/dev/zvol/${vm_fs}/disk0
+vm_boot_image=/dev/zvol/${vm_fs}/disk0
+
 [ "${vm_ifmac}" = "-" ] && vm_ifmac="none"
 
-[ -e ${vm_disk} ] || error "Missing disk image: ${vm_disk}."
+[ -e ${vm_boot_image} ] || error "Missing boot image: ${vm_boot_image}."
 
 : ${vm_name} ${vm_os} ${vm_cores} ${vm_memory} ${vm_ifmac}
 
