@@ -306,6 +306,7 @@ vm_ifmac=$(get_property ifmac)
 vm_bridge=$(get_property bridge)
 
 vm_disk=/dev/zvol/${vm_fs}/disk0
+[ "${vm_ifmac}" = "-" ] && vm_ifmac="none"
 
 [ -e ${vm_disk} ] || error "Missing disk image: ${vm_disk}."
 
