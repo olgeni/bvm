@@ -203,6 +203,7 @@ perform_kickstart ()
 
     perform_exec
 
+    zfs destroy ${vm_fs}@install
     zfs snapshot ${vm_fs}@install
 }
 
@@ -212,6 +213,7 @@ perform_install ()
 
     perform_exec
 
+    zfs destroy ${vm_fs}@install
     zfs snapshot ${vm_fs}@install
 }
 
