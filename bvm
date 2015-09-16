@@ -231,20 +231,22 @@ perform_kickstart ()
 {
     [ -e ${option_iso} ] || error "ISO image not found: ${option_iso}."
 
+    zfs snapshot ${vm_fs}@pre-install-$(date +%FT%T)
+
     perform_exec
 
-    zfs destroy ${vm_fs}@install
-    zfs snapshot ${vm_fs}@install
+    zfs snapshot ${vm_fs}@post-install-$(date +%FT%T)
 }
 
 perform_install ()
 {
     [ -e ${option_iso} ] || error "ISO image not found: ${option_iso}."
 
+    zfs snapshot ${vm_fs}@pre-install-$(date +%FT%T)
+
     perform_exec
 
-    zfs destroy ${vm_fs}@install
-    zfs snapshot ${vm_fs}@install
+    zfs snapshot ${vm_fs}@post-install-$(date +%FT%T)
 }
 
 perform_exec ()
