@@ -254,15 +254,24 @@ perform_kickstart ()
         kickstart_ip=$(gw_iface_address)
     fi
 
-    local _www=$(mktemp -d)
+    local _lighttpd_root=$(mktemp -d)
+    local _lighttpd_pid=$(mktemp)
+    local _lighttpd_conf=$(mktemp)
 
-    cp ${option_kickstart} ${_www}/kickstart.cfg
+    cp ${option_kickstart} ${_lighttpd_root}/kickstart.cfg
 
     zfs snapshot ${vm_fs}@pre-install-$(date +%FT%T)
 
     local _session=$(uuidgen)
 
-    /usr/local/bin/tmux new-session -s ${_session} -d "(cd ${_www} && /usr/local/bin/python -m SimpleHTTPServer)"
+    cat << EOF > ${_lighttpd_conf}
+server.pid-file = "${_lighttpd_pid}"
+server.port = 8000
+server.document-root = "${_lighttpd_root}"
+dir-listing.activate = "enable"
+EOF
+
+    /usr/local/sbin/lighttpd -f ${_lighttpd_conf}
 
     local _error=0
 
@@ -272,13 +281,13 @@ perform_kickstart ()
         _error=$?
     }
 
-    /usr/local/bin/tmux kill-session -t ${_session} >/dev/null 2>&1 || true
+    pkill -F ${_lighttpd_pid}
 
     zfs snapshot ${vm_fs}@post-install-$(date +%FT%T)
 
-    rm -f ${_www}/kickstart.cfg
+    rm -f ${_lighttpd_root}/kickstart.cfg
 
-    rmdir ${_www}
+    rmdir ${_lighttpd_root}
 
     return ${_error}
 }
