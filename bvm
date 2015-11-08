@@ -164,7 +164,7 @@ bhyve_load_debian ()
 
 bhyve_load ()
 {
-    case ${vm_os} in
+    case ${vm_ostype} in
         freebsd*)
             bhyve_load_freebsd
             ;;
@@ -175,7 +175,7 @@ bhyve_load ()
             bhyve_load_debian
             ;;
         *)
-            error "Operating system not supported: ${vm_os}."
+            error "Operating system not supported: ${vm_ostype}."
     esac
 }
 
@@ -337,7 +337,7 @@ shift $((${OPTIND} - 1))
 
 vm_fs=${vm_root_fs}/${vm_name}
 
-vm_os=$(get_property os)
+vm_ostype=$(get_property ostype)
 vm_cores=$(get_property cores)
 vm_memory=$(get_property memory)
 vm_ifmac=$(get_property ifmac)
@@ -349,7 +349,7 @@ vm_boot_image=/dev/zvol/${vm_fs}/disk0
 
 [ -e ${vm_boot_image} ] || error "Missing boot image: ${vm_boot_image}."
 
-: ${vm_name} ${vm_os} ${vm_cores} ${vm_memory} ${vm_ifmac}
+: ${vm_name} ${vm_ostype} ${vm_cores} ${vm_memory} ${vm_ifmac}
 
 : ${vm_bridge:=bridge0}
 

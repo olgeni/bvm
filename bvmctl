@@ -29,7 +29,7 @@ check_property ()
     [ "$1" = "cores"  ] && return 0
     [ "$1" = "ifmac"  ] && return 0
     [ "$1" = "memory" ] && return 0
-    [ "$1" = "os"     ] && return 0
+    [ "$1" = "ostype" ] && return 0
 
     error "Invalid property: $1."
 }
@@ -70,7 +70,7 @@ perform_create ()
     zfs set bvm:cores=${DEFAULT_CORES}   ${_vm_fs}
     zfs set bvm:ifmac=${DEFAULT_IFMAC}   ${_vm_fs}
     zfs set bvm:memory=${DEFAULT_MEMORY} ${_vm_fs}
-    zfs set bvm:os=${DEFAULT_OS}         ${_vm_fs}
+    zfs set bvm:ostype=${DEFAULT_OS}     ${_vm_fs}
 }
 
 perform_destroy ()
