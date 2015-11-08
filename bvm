@@ -4,8 +4,6 @@ set -e -u
 
 BVM_PATH=$(dirname $(realpath $0))
 
-vm_root_fs=$(zfs get -H -o value,name bvm:active | awk '$1 == "on" { print $2 }' | head -n 1)
-
 option_exec=""
 option_iso=""
 option_serial=""
@@ -16,6 +14,11 @@ error ()
 {
     echo "$@"
     exit 1
+}
+
+get_vm_root_fs ()
+{
+    zfs get -H -o value,name,source bvm:active | awk '$1 == "on" && $3 == "local" { print $2 }'
 }
 
 check_bridge ()
@@ -308,6 +311,12 @@ del_property ()
 }
 
 # -----------------------------------------------------------------
+
+if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
+    error "Filesystem not properly configured."
+fi
+
+vm_root_fs=$(get_vm_root_fs)
 
 kldstat -n vmm >/dev/null 2>&1 || error "Missing kernel module: vmm."
 
