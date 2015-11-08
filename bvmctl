@@ -2,9 +2,9 @@
 
 set -e -u
 
-SERVICE_DIR=/usr/local/etc/sv
-
 BVM_PATH=$(dirname $(realpath $0))
+
+SERVICE_DIR=/usr/local/etc/sv
 
 DEFAULT_BRIDGE=bridge0
 DEFAULT_CORES=1
