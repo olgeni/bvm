@@ -21,6 +21,22 @@ get_vm_root_fs ()
     zfs get -H -o value,name,source bvm:active | awk '$1 == "on" && $3 == "local" { print $2 }'
 }
 
+iface_address ()
+{
+    local _iface="$1"
+    ifconfig ${_iface} | grep "inet" | head -n 1 | awk '{ print $2 }'
+}
+
+gw_iface ()
+{
+    route get default | grep "interface:" | awk '{ print $2 }'
+}
+
+gw_iface_address ()
+{
+    iface_address $(gw_iface)
+}
+
 check_bridge ()
 {
     local _bridge="$1"
@@ -36,7 +52,7 @@ nmdm_base ()
 grub_for_centos_kickstart ()
 {
     cat << EOF
-linux /isolinux/vmlinuz ks=${option_url}
+linux /isolinux/vmlinuz ks=http://${kickstart_ip}:8000/kickstart.cfg
 initrd /isolinux/initrd.img
 boot
 EOF
@@ -54,7 +70,7 @@ EOF
 grub_for_debian_kickstart ()
 {
     cat << EOF
-linux /install.amd/vmlinuz install auto=true priority=critical url=${option_url}
+linux /install.amd/vmlinuz install auto=true priority=critical url=http://${kickstart_ip}:8000/kickstart.cfg
 initrd /install.amd/initrd.gz
 boot
 EOF
@@ -232,11 +248,39 @@ perform_kickstart ()
 {
     [ -e ${option_iso} ] || error "ISO image not found: ${option_iso}."
 
+    kickstart_ip=$(iface_address ${vm_bridge})
+
+    if [ -z "${kickstart_ip}" ]; then
+        kickstart_ip=$(gw_iface_address)
+    fi
+
+    local _www=$(mktemp -d)
+
+    cp ${option_kickstart} ${_www}/kickstart.cfg
+
     zfs snapshot ${vm_fs}@pre-install-$(date +%FT%T)
 
-    perform_exec
+    local _session=$(uuidgen)
+
+    /usr/local/bin/tmux new-session -s ${_session} -d "(cd ${_www} && /usr/local/bin/python -m SimpleHTTPServer)"
+
+    local _error=0
+
+    {
+        perform_exec
+    } || {
+        _error=$?
+    }
+
+    /usr/local/bin/tmux kill-session -t ${_session} >/dev/null 2>&1 || true
 
     zfs snapshot ${vm_fs}@post-install-$(date +%FT%T)
+
+    rm -f ${_www}/kickstart.cfg
+
+    rmdir ${_www}
+
+    return ${_error}
 }
 
 perform_install ()
@@ -324,13 +368,13 @@ action="$1"
 
 shift
 
-while getopts "n:i:u:sx" _option; do
+while getopts "n:i:k:sx" _option; do
     case ${_option} in
         n) vm_name=${OPTARG}
            ;;
         i) option_iso=${OPTARG}
            ;;
-        u) option_url=${OPTARG}
+        k) option_kickstart=${OPTARG}
            ;;
         s) option_serial=YES
            ;;
