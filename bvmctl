@@ -12,12 +12,15 @@ DEFAULT_IFMAC=none
 DEFAULT_MEMORY=1024
 DEFAULT_OS=freebsd
 
-vm_root_fs=$(zfs get -H -o value,name bvm:active | awk '$1 == "on" { print $2 }' | head -n 1)
-
 error ()
 {
     echo "$@"
     exit 1
+}
+
+get_vm_root_fs ()
+{
+    zfs get -H -o value,name,source bvm:active | awk '$1 == "on" && $3 == "local" { print $2 }'
 }
 
 check_property ()
@@ -29,6 +32,18 @@ check_property ()
     [ "$1" = "os"     ] && return 0
 
     error "Invalid property: $1."
+}
+
+perform_activate ()
+{
+    if [ -n "${vm_root_fs}" ]; then
+        return 1
+    fi
+
+    local _vm_root_fs="$1"
+
+    zfs create -o canmount=off "${_vm_root_fs}"
+    zfs set bvm:active=on "${_vm_root_fs}"
 }
 
 perform_set ()
@@ -124,11 +139,14 @@ EOF
     chmod 755 ${_service}/finish
 }
 
+if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
+    error "Filesystem not properly configured."
+fi
+
+vm_root_fs=$(get_vm_root_fs)
+
 action="$1"
 
 shift
 
 perform_${action} "$@"
-
-# zfs create -o canmount=off storage/vmm
-# zfs set bvm:active=on storage/vmm
