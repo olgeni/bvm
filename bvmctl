@@ -2,6 +2,8 @@
 
 set -e -u
 
+SERVICE_DIR=/usr/local/etc/sv
+
 BVM_PATH=$(dirname $(realpath $0))
 
 DEFAULT_BRIDGE=bridge0
@@ -89,7 +91,7 @@ perform_svinstall ()
 {
     local _vm_name="$1"
 
-    local _service=/usr/local/etc/sv/${_vm_name}
+    local _service=${SERVICE_DIR}/${_vm_name}
 
     mkdir -p ${_service}
 
