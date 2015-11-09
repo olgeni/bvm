@@ -64,7 +64,7 @@ perform_create ()
     local _vm_name="$1"
     local _vm_fs="${vm_root_fs}/${_vm_name}"
 
-    zfs create ${vm_root_fs}/${_vm_name}
+    zfs create -o canmount=off ${vm_root_fs}/${_vm_name}
 
     zfs set bvm:bridge=${DEFAULT_BRIDGE} ${_vm_fs}
     zfs set bvm:cores=${DEFAULT_CORES}   ${_vm_fs}
