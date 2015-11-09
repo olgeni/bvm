@@ -81,7 +81,7 @@ perform_destroy ()
     zfs destroy -rv ${_vm_fs}
 }
 
-perform_add_disk ()
+perform_disk ()
 {
     local _vm_name="$1"
     local _vm_fs="${vm_root_fs}/${_vm_name}"
