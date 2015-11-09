@@ -133,7 +133,7 @@ EOF
 #!/bin/sh
 
 exec 2>&1
-exec ${BVM_PATH}/bvm exec -n \$(basename \$(pwd)) -s -x
+exec ${BVM_PATH}/bvm finish -n \$(basename \$(pwd))
 EOF
 
     chmod 755 ${_service}/finish
