@@ -97,8 +97,10 @@ grub_load ()
         _options="${_options} -d ${_directory}"
     fi
 
-    if [ -n "${option_serial}" ]; then
-        _options="${_options} -c $(nmdm_base)-A"
+    if [ "${action}" != kickstart ]; then
+        if [ -n "${option_serial}" ]; then
+            _options="${_options} -c $(nmdm_base)-A"
+        fi
     fi
 
     if [ -e /dev/vmm/${vm_name} ]; then
