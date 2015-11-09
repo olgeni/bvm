@@ -113,7 +113,7 @@ perform_svinstall ()
     cat << EOF > ${_service}/run
 #!/bin/sh
 exec 2>&1
-exec ${BVM_PATH}/bvm exec -n ${_vm_name} -s -x
+exec ${BVM_PATH}/bvm exec -n \$(basename \$(pwd)) -s -x
 EOF
 
     chmod 755 ${_service}/run
@@ -133,7 +133,7 @@ EOF
 #!/bin/sh
 
 exec 2>&1
-exec ${BVM_PATH}/bvm finish -n ${_vm_name}
+exec ${BVM_PATH}/bvm exec -n \$(basename \$(pwd)) -s -x
 EOF
 
     chmod 755 ${_service}/finish
