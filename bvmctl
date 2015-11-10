@@ -18,6 +18,31 @@ error ()
     exit 1
 }
 
+usage ()
+{
+    cat <<EOF
+Usage: bvmctl [ACTION] [OPTION...]
+
+Actions:
+
+    activate [FS]           activate ZFS filesystem for bvm management
+    set [VM] [KEY] [VALUE]  set property
+    create [VM]             create virtual machine
+    destroy                 destroy virtual machine
+    disk [VM] [SIZE]        add disk to virtual machine (size in GBs)
+    svinstall               install runit service in ${SERVICE_DIR}
+
+Properties:
+
+    bridge  bridge interface
+    cores   number of assigned cores
+    ifmac   MAC address of virtio interface
+    memory  assigned memory in MBs
+    ostype  freebsd | centos7 | debian7 | debian8
+
+EOF
+}
+
 get_vm_root_fs ()
 {
     zfs get -H -o value,name,source bvm:active | awk '$1 == "on" && $3 == "local" { print $2 }'
@@ -138,6 +163,11 @@ EOF
 
     chmod 755 ${_service}/finish
 }
+
+if [ $# -eq 0 ]; then
+    usage
+    exit 1
+fi
 
 if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
     error "filesystem not properly configured."
