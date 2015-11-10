@@ -18,6 +18,24 @@ error ()
     exit 1
 }
 
+usage ()
+{
+    cat <<EOF
+Usage: bvm [ACTION] [OPTION...]
+
+Actions: kickstart | install | exec | finish | connect
+
+Options:
+
+    -n  VM name
+    -i  ISO path
+    -k  kickstart file
+    -s  use nmdm(4) serial console
+    -x  use exec(3) for bhyve
+
+EOF
+}
+
 get_property ()
 {
     zfs get -H -o value bvm:${1} ${vm_fs}
@@ -370,6 +388,11 @@ perform_connect ()
 }
 
 # -----------------------------------------------------------------
+
+if [ $# -eq 0 ]; then
+    usage
+    exit 1
+fi
 
 if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
     error "filesystem not properly configured."
