@@ -10,7 +10,7 @@ DEFAULT_BRIDGE=bridge0
 DEFAULT_CORES=1
 DEFAULT_IFMAC=none
 DEFAULT_MEMORY=1024
-DEFAULT_OS=freebsd
+DEFAULT_OSTYPE=freebsd
 
 error ()
 {
@@ -70,7 +70,7 @@ perform_create ()
     zfs set bvm:cores=${DEFAULT_CORES}   ${_vm_fs}
     zfs set bvm:ifmac=${DEFAULT_IFMAC}   ${_vm_fs}
     zfs set bvm:memory=${DEFAULT_MEMORY} ${_vm_fs}
-    zfs set bvm:ostype=${DEFAULT_OS}     ${_vm_fs}
+    zfs set bvm:ostype=${DEFAULT_OSTYPE} ${_vm_fs}
 }
 
 perform_destroy ()
