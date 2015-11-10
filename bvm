@@ -18,6 +18,21 @@ error ()
     exit 1
 }
 
+get_property ()
+{
+    zfs get -H -o value bvm:${1} ${vm_fs}
+}
+
+set_property ()
+{
+    zfs set bvm:${1}=${2} ${vm_fs}
+}
+
+del_property ()
+{
+    zfs inherit bvm:${1} ${vm_fs}
+}
+
 get_vm_root_fs ()
 {
     zfs get -H -o value,name,source bvm:active | awk '$1 == "on" && $3 == "local" { print $2 }'
@@ -352,21 +367,6 @@ perform_connect ()
     if [ -c ${_device} ]; then
         kermit -l ${_device}
     fi
-}
-
-get_property ()
-{
-    zfs get -H -o value bvm:${1} ${vm_fs}
-}
-
-set_property ()
-{
-    zfs set bvm:${1}=${2} ${vm_fs}
-}
-
-del_property ()
-{
-    zfs inherit bvm:${1} ${vm_fs}
 }
 
 # -----------------------------------------------------------------
