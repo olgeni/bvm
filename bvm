@@ -8,11 +8,13 @@ option_exec=""
 option_iso=""
 option_serial=""
 
+which /usr/local/sbin/grub-bhyve >/dev/null 2>&1 || error "missing grub-bhyve."
+
 # -----------------------------------------------------------------
 
 error ()
 {
-    echo "$@"
+    echo "error: $@"
     exit 1
 }
 
@@ -194,7 +196,7 @@ bhyve_load ()
             bhyve_load_debian
             ;;
         *)
-            error "Operating system not supported: ${vm_ostype}."
+            error "operating system not supported (${vm_ostype})."
     esac
 }
 
@@ -248,7 +250,9 @@ bhyve_exec ()
 
 perform_kickstart ()
 {
-    [ -e ${option_iso} ] || error "ISO image not found: ${option_iso}."
+    [ -e ${option_iso} ] || error "ISO image not found (${option_iso})."
+
+    which /usr/local/sbin/lighttpd >/dev/null 2>&1 || error "missing lighttpd."
 
     kickstart_ip=$(iface_address ${vm_bridge})
 
@@ -296,7 +300,7 @@ EOF
 
 perform_install ()
 {
-    [ -e ${option_iso} ] || error "ISO image not found: ${option_iso}."
+    [ -e ${option_iso} ] || error "ISO image not found (${option_iso})."
 
     zfs snapshot ${vm_fs}@pre-install-$(date +%FT%T)
 
@@ -308,16 +312,16 @@ perform_install ()
 perform_exec ()
 {
     if [ -z "${option_serial}" ]; then
-        [ -t 0 ] || error "A terminal is required when using the stdio console."
+        [ -t 0 ] || error "a terminal is required when using the stdio console."
     fi
 
-    check_bridge ${vm_bridge} || error "Bridge interface does not exist: ${vm_bridge}."
+    check_bridge ${vm_bridge} || error "bridge interface does not exist (${vm_bridge})."
 
     state_tap="$(ifconfig tap create)"
 
     if ! ifconfig ${vm_bridge} addm ${state_tap}; then
         ifconfig ${state_tap} destroy || true
-        error "Could not add interface ${state_tap} to bridge ${vm_bridge}."
+        error "could not add interface ${state_tap} to bridge ${vm_bridge}."
     fi
 
     set_property interface ${state_tap}
@@ -368,12 +372,12 @@ del_property ()
 # -----------------------------------------------------------------
 
 if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
-    error "Filesystem not properly configured."
+    error "filesystem not properly configured."
 fi
 
 vm_root_fs=$(get_vm_root_fs)
 
-kldstat -n vmm >/dev/null 2>&1 || error "Missing kernel module: vmm."
+kldstat -n vmm >/dev/null 2>&1 || error "vmm kernel module not loaded."
 
 action="$1"
 
@@ -409,7 +413,7 @@ vm_boot_image=/dev/zvol/${vm_fs}/disk0
 
 [ "${vm_ifmac}" = "-" ] && vm_ifmac="none"
 
-[ -e ${vm_boot_image} ] || error "Missing boot image: ${vm_boot_image}."
+[ -e ${vm_boot_image} ] || error "missing boot image (${vm_boot_image})."
 
 : ${vm_name} ${vm_ostype} ${vm_cores} ${vm_memory} ${vm_ifmac}
 

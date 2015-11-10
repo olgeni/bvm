@@ -14,7 +14,7 @@ DEFAULT_OS=freebsd
 
 error ()
 {
-    echo "$@"
+    echo "error: $@"
     exit 1
 }
 
@@ -31,7 +31,7 @@ check_property ()
     [ "$1" = "memory" ] && return 0
     [ "$1" = "ostype" ] && return 0
 
-    error "Invalid property: $1."
+    error "invalid property $1."
 }
 
 perform_activate ()
@@ -87,7 +87,7 @@ perform_disk ()
     local _vm_fs="${vm_root_fs}/${_vm_name}"
     local _vol_size="$2"
 
-    [ -n "${_vol_size}" ] || error "Invalid volume size: ${_vol_size}."
+    [ -n "${_vol_size}" ] || error "invalid volume size."
 
     local _index=0
 
@@ -140,7 +140,7 @@ EOF
 }
 
 if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
-    error "Filesystem not properly configured."
+    error "filesystem not properly configured."
 fi
 
 vm_root_fs=$(get_vm_root_fs)
