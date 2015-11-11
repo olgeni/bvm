@@ -72,6 +72,14 @@ gw_iface_address ()
     iface_address $(gw_iface)
 }
 
+destroy_ifaces ()
+{
+    for i in $(seq 1 $#); do
+        ifconfig "$1" destroy
+        shift
+    done
+}
+
 check_bridge ()
 {
     local _bridge="$1"
@@ -235,20 +243,65 @@ bhyve_load ()
 
 bhyve_exec ()
 {
-    local _mac=""
+    local -
 
-    if [ "${vm_ifmac}" != "none" ]; then
-        _mac="${_mac},mac=${vm_ifmac}"
+    if [ -z "${option_serial}" ]; then
+        [ -t 0 ] || error "a terminal is required when using the stdio console."
     fi
 
     local _devices=""
+    local _tap_list=""
 
     _devices="${_devices} -s 0:0,hostbridge"
     _devices="${_devices} -s 1:0,lpc"
-    _devices="${_devices} -s 2:0,virtio-net,${state_tap}${_mac}"
+
+    local _slot=2
+
+    local _error=0
+
+    for _item in $(echo "${vm_network}" | tr "," "\n"); do
+        set -- $(echo ${_item} | tr "/" " ")
+
+        set +u
+        _bridge="$1"
+        _mac="$2"
+        set -u
+
+        check_bridge ${_bridge} || error "bridge interface does not exist (${_bridge})."
+
+        local _tap="$(ifconfig tap create)"
+
+        if [ -z "${_tap_list}" ]; then
+            _tap_list="${_tap}"
+        else
+            _tap_list="${_tap_list} ${_tap}"
+        fi
+
+        if ! ifconfig ${_bridge} addm ${_tap}; then
+            error "could not add interface ${_tap} to bridge ${vm_network}."
+        fi
+
+        local _mac=""
+
+        if [ -n "${_mac}" ]; then
+            _mac="${_mac},mac=${vm_ifmac}"
+        fi
+
+        _devices="${_devices} -s ${_slot}:0,virtio-net,${_tap}${_mac}"
+
+        _slot=$((${_slot} + 1))
+    done || {
+        _error=$?
+    }
+
+    if [ ${_error} -ne 0 ]; then
+        destroy_ifaces ${_tap_list}
+        return ${_error}
+    fi
+
+    set_property tap_list ${_tap_list}
 
     local _index=0
-    local _slot=3
 
     while true; do
         local _disk=/dev/zvol/${vm_fs}/disk${_index}
@@ -287,11 +340,7 @@ perform_kickstart ()
 
     which /usr/local/sbin/lighttpd >/dev/null 2>&1 || error "missing lighttpd."
 
-    kickstart_ip=$(iface_address ${vm_bridge})
-
-    if [ -z "${kickstart_ip}" ]; then
-        kickstart_ip=$(gw_iface_address)
-    fi
+    kickstart_ip=$(gw_iface_address)
 
     local _lighttpd_root=$(mktemp -d)
     local _lighttpd_pid=$(mktemp)
@@ -344,21 +393,6 @@ perform_install ()
 
 perform_exec ()
 {
-    if [ -z "${option_serial}" ]; then
-        [ -t 0 ] || error "a terminal is required when using the stdio console."
-    fi
-
-    check_bridge ${vm_bridge} || error "bridge interface does not exist (${vm_bridge})."
-
-    state_tap="$(ifconfig tap create)"
-
-    if ! ifconfig ${vm_bridge} addm ${state_tap}; then
-        ifconfig ${state_tap} destroy || true
-        error "could not add interface ${state_tap} to bridge ${vm_bridge}."
-    fi
-
-    set_property interface ${state_tap}
-
     trap perform_finish EXIT
 
     bhyve_load
@@ -371,11 +405,9 @@ perform_finish ()
         bhyvectl --vm=${vm_name} --destroy
     fi
 
-    state_tap=$(get_property interface)
-
-    del_property interface
-
-    ifconfig "${state_tap}" destroy
+    local _tap_list=$(get_property tap_list)
+    del_property tap_list
+    destroy_ifaces ${_tap_list}
 }
 
 perform_connect ()
@@ -429,17 +461,12 @@ vm_fs=${vm_root_fs}/${vm_name}
 vm_ostype=$(get_property ostype)
 vm_cores=$(get_property cores)
 vm_memory=$(get_property memory)
-vm_ifmac=$(get_property ifmac)
-vm_bridge=$(get_property bridge)
+vm_network=$(get_property network)
 
 vm_boot_image=/dev/zvol/${vm_fs}/disk0
 
-[ "${vm_ifmac}" = "-" ] && vm_ifmac="none"
-
 [ -e ${vm_boot_image} ] || error "missing boot image (${vm_boot_image})."
 
-: ${vm_name} ${vm_ostype} ${vm_cores} ${vm_memory} ${vm_ifmac}
-
-: ${vm_bridge:=bridge0}
+: ${vm_name} ${vm_ostype} ${vm_cores} ${vm_memory} ${vm_network}
 
 perform_${action} "$@"

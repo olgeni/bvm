@@ -6,7 +6,7 @@ BVM_PATH=$(dirname $(realpath $0))
 
 SERVICE_DIR=/usr/local/etc/sv
 
-DEFAULT_BRIDGE=bridge0
+DEFAULT_NETWORK=bridge0
 DEFAULT_CORES=1
 DEFAULT_IFMAC=none
 DEFAULT_MEMORY=1024
@@ -34,11 +34,10 @@ Actions:
 
 Properties:
 
-    bridge  bridge interface
-    cores   number of assigned cores
-    ifmac   MAC address of virtio interface
-    memory  assigned memory in MBs
-    ostype  freebsd | centos7 | debian7 | debian8
+    network  list of network bridges
+    cores    number of assigned cores
+    memory   assigned memory in MBs
+    ostype   freebsd | centos7 | debian7 | debian8
 
 EOF
 }
@@ -50,11 +49,10 @@ get_vm_root_fs ()
 
 check_property ()
 {
-    [ "$1" = "bridge" ] && return 0
-    [ "$1" = "cores"  ] && return 0
-    [ "$1" = "ifmac"  ] && return 0
-    [ "$1" = "memory" ] && return 0
-    [ "$1" = "ostype" ] && return 0
+    [ "$1" = "network" ] && return 0
+    [ "$1" = "cores"   ] && return 0
+    [ "$1" = "memory"  ] && return 0
+    [ "$1" = "ostype"  ] && return 0
 
     error "invalid property $1."
 }
@@ -91,11 +89,10 @@ perform_create ()
 
     zfs create -o canmount=off ${vm_root_fs}/${_vm_name}
 
-    zfs set bvm:bridge=${DEFAULT_BRIDGE} ${_vm_fs}
-    zfs set bvm:cores=${DEFAULT_CORES}   ${_vm_fs}
-    zfs set bvm:ifmac=${DEFAULT_IFMAC}   ${_vm_fs}
-    zfs set bvm:memory=${DEFAULT_MEMORY} ${_vm_fs}
-    zfs set bvm:ostype=${DEFAULT_OSTYPE} ${_vm_fs}
+    zfs set bvm:network=${DEFAULT_NETWORK} ${_vm_fs}
+    zfs set bvm:cores=${DEFAULT_CORES}     ${_vm_fs}
+    zfs set bvm:memory=${DEFAULT_MEMORY}   ${_vm_fs}
+    zfs set bvm:ostype=${DEFAULT_OSTYPE}   ${_vm_fs}
 }
 
 perform_destroy ()
