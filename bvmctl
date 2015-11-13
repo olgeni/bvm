@@ -14,7 +14,7 @@ DEFAULT_OSTYPE=freebsd
 
 error ()
 {
-    echo "error: $@"
+    echo "bvmctl: $@"
     exit 1
 }
 
