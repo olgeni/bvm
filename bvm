@@ -371,8 +371,6 @@ EOF
 
     pkill -F ${_lighttpd_pid}
 
-    zfs snapshot ${vm_fs}@post-install-$(date +%FT%T)
-
     rm -f ${_lighttpd_root}/kickstart.cfg
 
     rmdir ${_lighttpd_root}
@@ -387,8 +385,6 @@ perform_install ()
     zfs snapshot ${vm_fs}@pre-install-$(date +%FT%T)
 
     perform_exec
-
-    zfs snapshot ${vm_fs}@post-install-$(date +%FT%T)
 }
 
 perform_exec ()
