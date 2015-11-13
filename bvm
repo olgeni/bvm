@@ -402,8 +402,11 @@ perform_finish ()
     fi
 
     local _tap_list=$(get_property tap_list)
-    del_property tap_list
-    destroy_ifaces ${_tap_list}
+
+    if [ ${_tap_list} != "-" ]; then
+        del_property tap_list
+        destroy_ifaces ${_tap_list}
+    fi
 }
 
 perform_console ()
