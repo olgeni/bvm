@@ -60,6 +60,7 @@ check_property ()
 perform_activate ()
 {
     if [ -n "${vm_root_fs}" ]; then
+        error "file system already active (${vm_root_fs})."
         return 1
     fi
 
