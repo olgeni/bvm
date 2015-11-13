@@ -308,7 +308,7 @@ bhyve_exec ()
         local _disk=/dev/zvol/${_disk_fs}
 
         if [ -e ${_disk} ]; then
-            if [ -n "$(zfs list -H -o name ${_disk_fs}@boot)" ]; then
+            if zfs list -H -o name ${_disk_fs}@boot >/dev/null 2>&1; then
                 echo "rollback: ${_disk_fs}@boot"
                 zfs rollback -r ${_disk_fs}@boot
             fi
