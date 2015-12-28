@@ -58,12 +58,14 @@ check_property ()
 
 perform_activate ()
 {
-    if [ -n "${vm_root_fs}" ]; then
-        error "file system already active (${vm_root_fs})."
+    local _vm_root_fs=$(get_vm_root_fs)
+
+    if [ -n "${_vm_root_fs}" ]; then
+        error "file system already active (${_vm_root_fs})."
         return 1
     fi
 
-    local _vm_root_fs="$1"
+    _vm_root_fs="$1"
 
     zfs create -o canmount=off "${_vm_root_fs}"
     zfs set bvm:active=on "${_vm_root_fs}"
@@ -75,7 +77,13 @@ perform_set ()
     local _property="$2"
     local _value="$3"
 
-    local _vm_fs="${vm_root_fs}/${_vm_name}"
+    if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
+        error "filesystem not properly configured."
+    fi
+
+    local _vm_root_fs=$(get_vm_root_fs)
+
+    local _vm_fs="${_vm_root_fs}/${_vm_name}"
 
     check_property ${_property}
 
@@ -87,7 +95,13 @@ perform_get ()
     local _vm_name="$1"
     local _property="$2"
 
-    local _vm_fs="${vm_root_fs}/${_vm_name}"
+    if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
+        error "filesystem not properly configured."
+    fi
+
+    local _vm_root_fs=$(get_vm_root_fs)
+
+    local _vm_fs="${_vm_root_fs}/${_vm_name}"
 
     check_property ${_property}
 
@@ -99,7 +113,13 @@ perform_create ()
     local _vm_name="$1"
     local _vm_fs="${vm_root_fs}/${_vm_name}"
 
-    zfs create -o canmount=off ${vm_root_fs}/${_vm_name}
+    if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
+        error "filesystem not properly configured."
+    fi
+
+    local _vm_root_fs=$(get_vm_root_fs)
+
+    zfs create -o canmount=off ${_vm_root_fs}/${_vm_name}
 
     zfs set bvm:network=${DEFAULT_NETWORK} ${_vm_fs}
     zfs set bvm:cores=${DEFAULT_CORES}     ${_vm_fs}
@@ -110,7 +130,14 @@ perform_create ()
 perform_destroy ()
 {
     local _vm_name="$1"
-    local _vm_fs="${vm_root_fs}/${_vm_name}"
+
+    if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
+        error "filesystem not properly configured."
+    fi
+
+    local _vm_root_fs=$(get_vm_root_fs)
+
+    local _vm_fs="${_vm_root_fs}/${_vm_name}"
 
     zfs destroy -rv ${_vm_fs}
 }
@@ -118,8 +145,15 @@ perform_destroy ()
 perform_disk ()
 {
     local _vm_name="$1"
-    local _vm_fs="${vm_root_fs}/${_vm_name}"
     local _vol_size="$2"
+
+    if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
+        error "filesystem not properly configured."
+    fi
+
+    local _vm_root_fs=$(get_vm_root_fs)
+
+    local _vm_fs="${_vm_root_fs}/${_vm_name}"
 
     [ -n "${_vol_size}" ] || error "invalid volume size."
 
@@ -177,12 +211,6 @@ if [ $# -eq 0 ]; then
     usage
     exit 1
 fi
-
-if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
-    error "filesystem not properly configured."
-fi
-
-vm_root_fs=$(get_vm_root_fs)
 
 action="$1"
 
