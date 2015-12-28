@@ -388,7 +388,7 @@ perform_install ()
 {
     [ -e ${option_iso} ] || error "ISO image not found (${option_iso})."
 
-    zfs snapshot ${vm_fs}@pre-install-$(date +%FT%T)
+    zfs snapshot -r ${vm_fs}@pre-install-$(date +%FT%T)
 
     perform_exec
 }
