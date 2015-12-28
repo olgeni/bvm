@@ -25,11 +25,11 @@ Usage: bvmctl [ACTION] [OPTION...]
 Actions:
 
     activate [FS]           activate ZFS filesystem for bvm management
-    set [VM] [KEY] [VALUE]  set property
     create [VM]             create virtual machine
-    destroy                 destroy virtual machine
+    destroy [VM]            destroy virtual machine
+    set [VM] [KEY] [VALUE]  set property
     disk [VM] [SIZE]        add disk to virtual machine (size in GBs)
-    svinstall               install runit service in ${SERVICE_DIR}
+    svinstall [VM]          install runit service in ${SERVICE_DIR}
 
 Properties:
 
