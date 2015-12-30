@@ -345,6 +345,7 @@ perform_kickstart ()
     which /usr/local/sbin/lighttpd >/dev/null 2>&1 || error "missing lighttpd."
 
     [ -e ${option_iso} ] || error "ISO image not found (${option_iso})."
+    [ -e ${option_kickstart} ] || error "kickstart file not found (${option_kickstart})."
 
     kickstart_ip=$(gw_iface_address)
 
