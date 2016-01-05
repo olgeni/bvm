@@ -43,7 +43,7 @@ EOF
 
 get_vm_root_fs ()
 {
-    zfs get -H -o value,name,source bvm:active | awk '$1 == "on" && $3 == "local" { print $2 }'
+    zfs get -H -o name -s local bvm:active | head -n 1
 }
 
 check_property ()
