@@ -11,13 +11,13 @@ DEFAULT_CORES=1
 DEFAULT_MEMORY=1024
 DEFAULT_OSTYPE=freebsd
 
-error ()
+error()
 {
     echo "bvmctl: $@"
     exit 1
 }
 
-usage ()
+usage()
 {
     cat <<EOF
 Usage: bvmctl [ACTION] [OPTION...]
@@ -41,12 +41,12 @@ Properties:
 EOF
 }
 
-get_vm_root_fs ()
+get_vm_root_fs()
 {
     zfs get -H -o name -s local bvm:active | head -n 1
 }
 
-check_property ()
+check_property()
 {
     [ "$1" = "network" ] && return 0
     [ "$1" = "cores"   ] && return 0
@@ -56,7 +56,7 @@ check_property ()
     error "invalid property $1."
 }
 
-perform_activate ()
+perform_activate()
 {
     local _vm_root_fs=$(get_vm_root_fs)
 
@@ -71,7 +71,7 @@ perform_activate ()
     zfs set bvm:active=on "${_vm_root_fs}"
 }
 
-perform_set ()
+perform_set()
 {
     local _vm_name="$1"
     local _property="$2"
@@ -90,7 +90,7 @@ perform_set ()
     zfs set bvm:${_property}=${_value} ${_vm_fs}
 }
 
-perform_get ()
+perform_get()
 {
     local _vm_name="$1"
     local _property="$2"
@@ -108,7 +108,7 @@ perform_get ()
     zfs get bvm:${_property} ${_vm_fs}
 }
 
-perform_create ()
+perform_create()
 {
     local _vm_name="$1"
     local _vm_fs="${vm_root_fs}/${_vm_name}"
@@ -127,7 +127,7 @@ perform_create ()
     zfs set bvm:ostype=${DEFAULT_OSTYPE}   ${_vm_fs}
 }
 
-perform_destroy ()
+perform_destroy()
 {
     local _vm_name="$1"
 
@@ -142,7 +142,7 @@ perform_destroy ()
     zfs destroy -rv ${_vm_fs}
 }
 
-perform_disk ()
+perform_disk()
 {
     local _vm_name="$1"
     local _vol_size="$2"
@@ -170,7 +170,7 @@ perform_disk ()
     zfs create -b 4K -o volmode=dev -V ${_vol_size} -o compression=lz4 ${_vm_fs}/disk${_index}
 }
 
-perform_svinstall ()
+perform_svinstall()
 {
     local _vm_name="$1"
 

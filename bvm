@@ -12,13 +12,13 @@ which /usr/local/sbin/grub-bhyve >/dev/null 2>&1 || error "missing grub-bhyve."
 
 # -----------------------------------------------------------------
 
-error ()
+error()
 {
     echo "error: $@"
     exit 1
 }
 
-usage ()
+usage()
 {
     cat <<EOF
 Usage: bvm [ACTION] [OPTION...]
@@ -36,43 +36,43 @@ Options:
 EOF
 }
 
-get_property ()
+get_property()
 {
     zfs get -H -o value bvm:${1} ${vm_fs}
 }
 
-set_property ()
+set_property()
 {
     zfs set bvm:${1}=${2} ${vm_fs}
 }
 
-del_property ()
+del_property()
 {
     zfs inherit bvm:${1} ${vm_fs}
 }
 
-get_vm_root_fs ()
+get_vm_root_fs()
 {
     zfs get -H -o name -s local bvm:active | head -n 1
 }
 
-iface_address ()
+iface_address()
 {
     local _iface="$1"
     ifconfig ${_iface} | grep "inet" | head -n 1 | awk '{ print $2 }'
 }
 
-gw_iface ()
+gw_iface()
 {
     route get default | grep "interface:" | awk '{ print $2 }'
 }
 
-gw_iface_address ()
+gw_iface_address()
 {
     iface_address $(gw_iface)
 }
 
-destroy_ifaces ()
+destroy_ifaces()
 {
     for i in $(seq 1 $#); do
         ifconfig "$1" destroy
@@ -80,19 +80,19 @@ destroy_ifaces ()
     done
 }
 
-check_bridge ()
+check_bridge()
 {
     local _bridge="$1"
 
     ifconfig -l ether | rs 0 1 | grep "^${_bridge}\$" >/dev/null 2>&1
 }
 
-nmdm_base ()
+nmdm_base()
 {
     echo "/dev/nmdm-${vm_name}"
 }
 
-grub_for_centos_kickstart ()
+grub_for_centos_kickstart()
 {
     cat << EOF
 linux /isolinux/vmlinuz ks=http://${kickstart_ip}:8000/kickstart.cfg
@@ -101,7 +101,7 @@ boot
 EOF
 }
 
-grub_for_centos_install ()
+grub_for_centos_install()
 {
     cat << EOF
 linux /isolinux/vmlinuz
@@ -110,7 +110,7 @@ boot
 EOF
 }
 
-grub_for_debian_kickstart ()
+grub_for_debian_kickstart()
 {
     cat << EOF
 linux /install.amd/vmlinuz install auto=true priority=critical url=http://${kickstart_ip}:8000/kickstart.cfg
@@ -119,7 +119,7 @@ boot
 EOF
 }
 
-grub_for_debian_install ()
+grub_for_debian_install()
 {
     cat << EOF
 linux /install.amd/vmlinuz
@@ -128,7 +128,7 @@ boot
 EOF
 }
 
-grub_load ()
+grub_load()
 {
     local _mapfile="$1"
     local _root="$2"
@@ -153,7 +153,7 @@ grub_load ()
     /usr/local/sbin/grub-bhyve -r ${_root} -M ${vm_memory} ${_options} ${vm_name}
 }
 
-grub_create_map ()
+grub_create_map()
 {
     local _mapfile="$1"
 
@@ -164,7 +164,7 @@ grub_create_map ()
     fi
 }
 
-bhyve_load_freebsd ()
+bhyve_load_freebsd()
 {
     case ${action} in
         kickstart)
@@ -180,7 +180,7 @@ bhyve_load_freebsd ()
     esac
 }
 
-bhyve_load_centos ()
+bhyve_load_centos()
 {
     mapfile=$(mktemp -t bvm-mapfile)
 
@@ -202,7 +202,7 @@ bhyve_load_centos ()
     rm -f ${mapfile}
 }
 
-bhyve_load_debian ()
+bhyve_load_debian()
 {
     mapfile=$(mktemp -t bvm-mapfile)
 
@@ -224,7 +224,7 @@ bhyve_load_debian ()
     rm -f ${mapfile}
 }
 
-bhyve_load ()
+bhyve_load()
 {
     case ${vm_ostype} in
         freebsd*)
@@ -241,7 +241,7 @@ bhyve_load ()
     esac
 }
 
-bhyve_exec ()
+bhyve_exec()
 {
     local -
 
@@ -340,7 +340,7 @@ bhyve_exec ()
     ${_exec} bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -u -l com1,${_console} ${_devices} ${vm_name}
 }
 
-perform_kickstart ()
+perform_kickstart()
 {
     which /usr/local/sbin/lighttpd >/dev/null 2>&1 || error "missing lighttpd."
 
@@ -385,7 +385,7 @@ EOF
     return ${_error}
 }
 
-perform_install ()
+perform_install()
 {
     [ -e ${option_iso} ] || error "ISO image not found (${option_iso})."
 
@@ -394,7 +394,7 @@ perform_install ()
     perform_exec
 }
 
-perform_exec ()
+perform_exec()
 {
     trap perform_finish EXIT
 
@@ -402,7 +402,7 @@ perform_exec ()
     bhyve_exec
 }
 
-perform_finish ()
+perform_finish()
 {
     if [ -e /dev/vmm/${vm_name} ]; then
         bhyvectl --vm=${vm_name} --destroy
@@ -416,7 +416,7 @@ perform_finish ()
     fi
 }
 
-perform_console ()
+perform_console()
 {
     local _device="$(nmdm_base)-B"
 
