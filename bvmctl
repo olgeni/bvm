@@ -77,6 +77,8 @@ perform_set()
     local _property="$2"
     local _value="$3"
 
+    check_property ${_property}
+
     if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
         error "filesystem not properly configured."
     fi
@@ -84,8 +86,6 @@ perform_set()
     local _vm_root_fs=$(get_vm_root_fs)
 
     local _vm_fs="${_vm_root_fs}/${_vm_name}"
-
-    check_property ${_property}
 
     zfs set bvm:${_property}=${_value} ${_vm_fs}
 }
@@ -95,6 +95,8 @@ perform_get()
     local _vm_name="$1"
     local _property="$2"
 
+    check_property ${_property}
+
     if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
         error "filesystem not properly configured."
     fi
@@ -102,8 +104,6 @@ perform_get()
     local _vm_root_fs=$(get_vm_root_fs)
 
     local _vm_fs="${_vm_root_fs}/${_vm_name}"
-
-    check_property ${_property}
 
     zfs get bvm:${_property} ${_vm_fs}
 }
