@@ -111,13 +111,14 @@ perform_get()
 perform_create()
 {
     local _vm_name="$1"
-    local _vm_fs="${vm_root_fs}/${_vm_name}"
 
     if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
         error "filesystem not properly configured."
     fi
 
     local _vm_root_fs=$(get_vm_root_fs)
+
+    local _vm_fs="${_vm_root_fs}/${_vm_name}"
 
     zfs create -o canmount=off ${_vm_root_fs}/${_vm_name}
 
