@@ -7,6 +7,8 @@ BVM_PATH=$(dirname $(realpath $0))
 option_exec=""
 option_iso=""
 option_serial=""
+option_address=""
+option_router=""
 
 which /usr/local/sbin/grub-bhyve >/dev/null 2>&1 || error "missing grub-bhyve."
 
@@ -32,6 +34,8 @@ Options:
     -k  kickstart file
     -s  use nmdm(4) serial console
     -x  use exec(3) for bhyve
+    -a  address/netmask
+    -r  router address
 
 EOF
 }
@@ -171,7 +175,17 @@ bhyve_load_freebsd()
             bhyveload -m ${vm_memory}M -d ${option_iso} ${vm_name}
             ;;
         install)
-            bhyveload -m ${vm_memory}M -d ${option_iso} ${vm_name}
+            local _options=""
+
+            if [ -n "${option_address}" ]; then
+                _options="${_options} -e bsdkit_ifconfig=${option_address}"
+            fi
+
+            if [ -n "${option_router}" ]; then
+                _options="${_options} -e bsdkit_defaultrouter=${option_router}"
+            fi
+
+            bhyveload -m ${vm_memory}M -d ${option_iso} ${_options} ${vm_name}
             ;;
         exec)
             bhyveload -m ${vm_memory}M -d ${vm_boot_image} ${vm_name}
@@ -440,7 +454,7 @@ action="$1"
 
 shift
 
-while getopts "n:i:k:sx" _option; do
+while getopts "n:i:k:sxa:r:" _option; do
     case ${_option} in
         n) vm_name=${OPTARG}
            ;;
@@ -451,6 +465,10 @@ while getopts "n:i:k:sx" _option; do
         s) option_serial=YES
            ;;
         x) option_exec=YES
+           ;;
+        a) option_address=${OPTARG}
+           ;;
+        r) option_router=${OPTARG}
            ;;
         *)
     esac
