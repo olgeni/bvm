@@ -170,13 +170,17 @@ grub_create_map()
 
 bhyve_load_freebsd()
 {
+    local _options=""
+
+    if [ -n "${option_serial}" ]; then
+        _options="${_options} -c $(nmdm_base)-A"
+    fi
+
     case ${action} in
         kickstart)
             bhyveload -m ${vm_memory}M -d ${option_iso} ${vm_name}
             ;;
         install)
-            local _options=""
-
             if [ -n "${option_address}" ]; then
                 _options="${_options} -e bsdkit_ifconfig=${option_address}"
             fi
