@@ -193,7 +193,6 @@ EOF
 
 mkdir -p main
 exec chpst svlogd -tt ./main
-
 EOF
 
     chmod 755 ${_service}/log/run
