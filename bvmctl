@@ -4,8 +4,6 @@ set -e -u
 
 BVM_PATH=$(dirname $(realpath $0))
 
-SERVICE_DIR=/usr/local/etc/sv
-
 DEFAULT_NETWORK=bridge0
 DEFAULT_CORES=1
 DEFAULT_MEMORY=1024
@@ -30,7 +28,7 @@ Actions:
     destroy [VM]            destroy virtual machine
     set [VM] [KEY] [VALUE]  set property
     disk [VM] [SIZE]        add disk to virtual machine (size in GBs)
-    svinstall [VM]          install runit service in ${SERVICE_DIR}
+    svinstall [VM] [SVDIR]  install runit service in SVDIR
     exists [VM]             check if virtual machine exists
 
 Properties:
@@ -176,8 +174,9 @@ perform_disk()
 perform_svinstall()
 {
     local _vm_name="$1"
+    local _svdir="$2"
 
-    local _service=${SERVICE_DIR}/${_vm_name}
+    local _service=${_svdir}/${_vm_name}
 
     mkdir -p ${_service}
 
