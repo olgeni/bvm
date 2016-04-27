@@ -5,6 +5,7 @@ set -e -u
 BVM_PATH=$(dirname $(realpath $0))
 
 : ${OPTION_VM_NAME:=""}
+: ${OPTION_EXEC:=""}
 : ${OPTION_ISO:=""}
 : ${OPTION_KICKSTART:=""}
 : ${OPTION_SERIAL:=""}
@@ -21,16 +22,6 @@ error()
     exit 1
 }
 
-environment()
-{
-    echo OPTION_VM_NAME=${OPTION_VM_NAME}     \
-         OPTION_ISO=${OPTION_ISO}             \
-         OPTION_KICKSTART=${OPTION_KICKSTART} \
-         OPTION_SERIAL=${OPTION_SERIAL}       \
-         OPTION_ADDRESS=${OPTION_ADDRESS}     \
-         OPTION_ROUTER=${OPTION_ROUTER}
-}
-
 usage()
 {
     cat <<EOF
@@ -41,6 +32,7 @@ Actions: kickstart | install | exec | finish | console
 Options:
 
     -n  VM name
+    -x  use exec(3) for running bhyve
     -i  ISO path
     -k  kickstart file
     -s  use nmdm(4) serial console
@@ -359,7 +351,13 @@ bhyve_exec()
         _console="$(nmdm_base)-A"
     fi
 
-    exec bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -u -l com1,${_console} ${_devices} ${OPTION_VM_NAME}
+    local _exec=""
+
+    if [ -n "${OPTION_EXEC}" ]; then
+        _exec="exec "
+    fi
+
+    ${_exec} bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -u -l com1,${_console} ${_devices} ${OPTION_VM_NAME}
 }
 
 perform_kickstart()
@@ -391,7 +389,7 @@ EOF
     local _error=0
 
     {
-        eval $(environment) perform_exec
+        perform_exec
     } || {
         _error=$?
     }
@@ -409,7 +407,7 @@ perform_install()
 {
     [ -e ${OPTION_ISO} ] || error "ISO image not found (${OPTION_ISO})."
 
-    eval $(environment) perform_exec
+    perform_exec
 }
 
 perform_exec()
@@ -462,9 +460,11 @@ action="$1"
 
 shift
 
-while getopts "n:i:k:sa:r:" _option; do
+while getopts "n:xi:k:sa:r:" _option; do
     case ${_option} in
         n) OPTION_VM_NAME=${OPTARG}
+           ;;
+        x) OPTION_EXEC=YES
            ;;
         i) OPTION_ISO=${OPTARG}
            ;;
@@ -498,5 +498,12 @@ vm_boot_image=/dev/zvol/${vm_fs}/disk0
 [ -e ${vm_boot_image} ] || error "missing boot image (${vm_boot_image})."
 
 : ${vm_ostype} ${vm_cores} ${vm_memory} ${vm_network}
+
+case ${action} in
+    exec)
+    ;;
+    *)
+        OPTION_EXEC=""
+esac
 
 perform_${action} "$@"
