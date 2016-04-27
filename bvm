@@ -4,11 +4,12 @@ set -e -u
 
 BVM_PATH=$(dirname $(realpath $0))
 
-option_exec=""
-option_iso=""
-option_serial=""
-option_address=""
-option_router=""
+OPTION_EXEC=""
+OPTION_ISO=""
+OPTION_KICKSTART=""
+OPTION_SERIAL=""
+OPTION_ADDRESS=""
+OPTION_ROUTER=""
 
 which /usr/local/sbin/grub-bhyve >/dev/null 2>&1 || error "missing grub-bhyve."
 
@@ -145,7 +146,7 @@ grub_load()
     fi
 
     if [ "${action}" != kickstart ]; then
-        if [ -n "${option_serial}" ]; then
+        if [ -n "${OPTION_SERIAL}" ]; then
             _options="${_options} -c $(nmdm_base)-A"
         fi
     fi
@@ -163,8 +164,8 @@ grub_create_map()
 
     echo "(hd0) ${vm_boot_image}" > ${_mapfile}
 
-    if [ -n "${option_iso}" ]; then
-        echo "(cd0) ${option_iso}" >> ${_mapfile}
+    if [ -n "${OPTION_ISO}" ]; then
+        echo "(cd0) ${OPTION_ISO}" >> ${_mapfile}
     fi
 }
 
@@ -172,24 +173,24 @@ bhyve_load_freebsd()
 {
     local _options=""
 
-    if [ -n "${option_serial}" ]; then
+    if [ -n "${OPTION_SERIAL}" ]; then
         _options="${_options} -c $(nmdm_base)-A"
     fi
 
     case ${action} in
         kickstart)
-            bhyveload -m ${vm_memory}M -d ${option_iso} ${vm_name}
+            bhyveload -m ${vm_memory}M -d ${OPTION_ISO} ${vm_name}
             ;;
         install)
-            if [ -n "${option_address}" ]; then
-                _options="${_options} -e bsdkit_ifconfig=${option_address}"
+            if [ -n "${OPTION_ADDRESS}" ]; then
+                _options="${_options} -e bsdkit_ifconfig=${OPTION_ADDRESS}"
             fi
 
-            if [ -n "${option_router}" ]; then
-                _options="${_options} -e bsdkit_defaultrouter=${option_router}"
+            if [ -n "${OPTION_ROUTER}" ]; then
+                _options="${_options} -e bsdkit_defaultrouter=${OPTION_ROUTER}"
             fi
 
-            bhyveload -m ${vm_memory}M -d ${option_iso} ${_options} ${vm_name}
+            bhyveload -m ${vm_memory}M -d ${OPTION_ISO} ${_options} ${vm_name}
             ;;
         exec)
             bhyveload -m ${vm_memory}M -d ${vm_boot_image} ${vm_name}
@@ -263,7 +264,7 @@ bhyve_exec()
 {
     local -
 
-    if [ -z "${option_serial}" ]; then
+    if [ -z "${OPTION_SERIAL}" ]; then
         [ -t 0 ] || error "a terminal is required when using the stdio console."
     fi
 
@@ -339,19 +340,19 @@ bhyve_exec()
         fi
     done
 
-    if [ -n "${option_iso}" ]; then
-        _devices="${_devices} -s 31:0,ahci-cd,${option_iso}"
+    if [ -n "${OPTION_ISO}" ]; then
+        _devices="${_devices} -s 31:0,ahci-cd,${OPTION_ISO}"
     fi
 
     local _exec=""
 
-    if [ -n "${option_exec}" ]; then
+    if [ -n "${OPTION_EXEC}" ]; then
         _exec="exec "
     fi
 
     local _console="stdio"
 
-    if [ -n "${option_serial}" ]; then
+    if [ -n "${OPTION_SERIAL}" ]; then
         _console="$(nmdm_base)-A"
     fi
 
@@ -362,7 +363,7 @@ perform_kickstart()
 {
     which /usr/local/sbin/lighttpd >/dev/null 2>&1 || error "missing lighttpd."
 
-    [ -e ${option_iso} ] || error "ISO image not found (${option_iso})."
+    [ -e ${OPTION_ISO} ] || error "ISO image not found (${OPTION_ISO})."
     [ -e ${option_kickstart} ] || error "kickstart file not found (${option_kickstart})."
 
     kickstart_ip=$(gw_iface_address)
@@ -403,7 +404,7 @@ EOF
 
 perform_install()
 {
-    [ -e ${option_iso} ] || error "ISO image not found (${option_iso})."
+    [ -e ${OPTION_ISO} ] || error "ISO image not found (${OPTION_ISO})."
 
     perform_exec
 }
@@ -462,17 +463,17 @@ while getopts "n:i:k:sxa:r:" _option; do
     case ${_option} in
         n) vm_name=${OPTARG}
            ;;
-        i) option_iso=${OPTARG}
+        i) OPTION_ISO=${OPTARG}
            ;;
         k) option_kickstart=${OPTARG}
            ;;
-        s) option_serial=YES
+        s) OPTION_SERIAL=YES
            ;;
-        x) option_exec=YES
+        x) OPTION_EXEC=YES
            ;;
-        a) option_address=${OPTARG}
+        a) OPTION_ADDRESS=${OPTARG}
            ;;
-        r) option_router=${OPTARG}
+        r) OPTION_ROUTER=${OPTARG}
            ;;
         *)
     esac
