@@ -4,14 +4,12 @@ set -e -u
 
 BVM_PATH=$(dirname $(realpath $0))
 
-OPTION_VM_NAME=""
-OPTION_ISO=""
-OPTION_KICKSTART=""
-OPTION_SERIAL=""
-OPTION_ADDRESS=""
-OPTION_ROUTER=""
-
-use_exec=""
+: ${OPTION_VM_NAME:=""}
+: ${OPTION_ISO:=""}
+: ${OPTION_KICKSTART:=""}
+: ${OPTION_SERIAL:=""}
+: ${OPTION_ADDRESS:=""}
+: ${OPTION_ROUTER:=""}
 
 which /usr/local/sbin/grub-bhyve >/dev/null 2>&1 || error "missing grub-bhyve."
 
@@ -21,6 +19,16 @@ error()
 {
     echo "error: $@"
     exit 1
+}
+
+environment()
+{
+    echo OPTION_VM_NAME=${OPTION_VM_NAME}     \
+         OPTION_ISO=${OPTION_ISO}             \
+         OPTION_KICKSTART=${OPTION_KICKSTART} \
+         OPTION_SERIAL=${OPTION_SERIAL}       \
+         OPTION_ADDRESS=${OPTION_ADDRESS}     \
+         OPTION_ROUTER=${OPTION_ROUTER}
 }
 
 usage()
@@ -345,19 +353,13 @@ bhyve_exec()
         _devices="${_devices} -s 31:0,ahci-cd,${OPTION_ISO}"
     fi
 
-    local _exec=""
-
-    if [ -n "${use_exec}" ]; then
-        _exec="exec "
-    fi
-
     local _console="stdio"
 
     if [ -n "${OPTION_SERIAL}" ]; then
         _console="$(nmdm_base)-A"
     fi
 
-    ${_exec} bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -u -l com1,${_console} ${_devices} ${OPTION_VM_NAME}
+    exec bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -u -l com1,${_console} ${_devices} ${OPTION_VM_NAME}
 }
 
 perform_kickstart()
@@ -389,7 +391,7 @@ EOF
     local _error=0
 
     {
-        perform_exec
+        eval $(environment) perform_exec
     } || {
         _error=$?
     }
@@ -407,7 +409,7 @@ perform_install()
 {
     [ -e ${OPTION_ISO} ] || error "ISO image not found (${OPTION_ISO})."
 
-    perform_exec
+    eval $(environment) perform_exec
 }
 
 perform_exec()
@@ -496,12 +498,5 @@ vm_boot_image=/dev/zvol/${vm_fs}/disk0
 [ -e ${vm_boot_image} ] || error "missing boot image (${vm_boot_image})."
 
 : ${vm_ostype} ${vm_cores} ${vm_memory} ${vm_network}
-
-case ${action} in
-    exec)
-        use_exec=YES
-        ;;
-    *)
-esac
 
 perform_${action} "$@"
