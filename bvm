@@ -4,12 +4,14 @@ set -e -u
 
 BVM_PATH=$(dirname $(realpath $0))
 
-OPTION_EXEC=""
+OPTION_VM_NAME=""
 OPTION_ISO=""
 OPTION_KICKSTART=""
 OPTION_SERIAL=""
 OPTION_ADDRESS=""
 OPTION_ROUTER=""
+
+use_exec=""
 
 which /usr/local/sbin/grub-bhyve >/dev/null 2>&1 || error "missing grub-bhyve."
 
@@ -34,7 +36,6 @@ Options:
     -i  ISO path
     -k  kickstart file
     -s  use nmdm(4) serial console
-    -x  use exec(3) for bhyve
     -a  address/netmask
     -r  router address
 
@@ -94,7 +95,7 @@ check_bridge()
 
 nmdm_base()
 {
-    echo "/dev/nmdm-${vm_name}"
+    echo "/dev/nmdm-${OPTION_VM_NAME}"
 }
 
 grub_for_centos_kickstart()
@@ -151,11 +152,11 @@ grub_load()
         fi
     fi
 
-    if [ -e /dev/vmm/${vm_name} ]; then
-        bhyvectl --vm=${vm_name} --destroy
+    if [ -e /dev/vmm/${OPTION_VM_NAME} ]; then
+        bhyvectl --vm=${OPTION_VM_NAME} --destroy
     fi
 
-    /usr/local/sbin/grub-bhyve -r ${_root} -M ${vm_memory} ${_options} ${vm_name}
+    /usr/local/sbin/grub-bhyve -r ${_root} -M ${vm_memory} ${_options} ${OPTION_VM_NAME}
 }
 
 grub_create_map()
@@ -190,10 +191,10 @@ bhyve_load_freebsd()
                 _options="${_options} -e bsdkit_defaultrouter=${OPTION_ROUTER}"
             fi
 
-            bhyveload -m ${vm_memory}M -d ${OPTION_ISO} ${_options} ${vm_name}
+            bhyveload -m ${vm_memory}M -d ${OPTION_ISO} ${_options} ${OPTION_VM_NAME}
             ;;
         exec)
-            bhyveload -m ${vm_memory}M -d ${vm_boot_image} ${vm_name}
+            bhyveload -m ${vm_memory}M -d ${vm_boot_image} ${OPTION_VM_NAME}
             ;;
         *)
     esac
@@ -346,7 +347,7 @@ bhyve_exec()
 
     local _exec=""
 
-    if [ -n "${OPTION_EXEC}" ]; then
+    if [ -n "${use_exec}" ]; then
         _exec="exec "
     fi
 
@@ -356,7 +357,7 @@ bhyve_exec()
         _console="$(nmdm_base)-A"
     fi
 
-    ${_exec} bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -u -l com1,${_console} ${_devices} ${vm_name}
+    ${_exec} bhyve -c ${vm_cores} -m ${vm_memory}M -H -P -A -u -l com1,${_console} ${_devices} ${OPTION_VM_NAME}
 }
 
 perform_kickstart()
@@ -364,7 +365,7 @@ perform_kickstart()
     which /usr/local/sbin/lighttpd >/dev/null 2>&1 || error "missing lighttpd."
 
     [ -e ${OPTION_ISO} ] || error "ISO image not found (${OPTION_ISO})."
-    [ -e ${option_kickstart} ] || error "kickstart file not found (${option_kickstart})."
+    [ -e ${OPTION_KICKSTART} ] || error "kickstart file not found (${OPTION_KICKSTART})."
 
     kickstart_ip=$(gw_iface_address)
 
@@ -372,7 +373,7 @@ perform_kickstart()
     local _lighttpd_pid=$(mktemp)
     local _lighttpd_conf=$(mktemp)
 
-    cp ${option_kickstart} ${_lighttpd_root}/kickstart.cfg
+    cp ${OPTION_KICKSTART} ${_lighttpd_root}/kickstart.cfg
 
     local _session=$(uuidgen)
 
@@ -419,8 +420,8 @@ perform_exec()
 
 perform_finish()
 {
-    if [ -e /dev/vmm/${vm_name} ]; then
-        bhyvectl --vm=${vm_name} --destroy
+    if [ -e /dev/vmm/${OPTION_VM_NAME} ]; then
+        bhyvectl --vm=${OPTION_VM_NAME} --destroy
     fi
 
     local _tap_list=$(get_property tap_list)
@@ -459,17 +460,15 @@ action="$1"
 
 shift
 
-while getopts "n:i:k:sxa:r:" _option; do
+while getopts "n:i:k:sa:r:" _option; do
     case ${_option} in
-        n) vm_name=${OPTARG}
+        n) OPTION_VM_NAME=${OPTARG}
            ;;
         i) OPTION_ISO=${OPTARG}
            ;;
-        k) option_kickstart=${OPTARG}
+        k) OPTION_KICKSTART=${OPTARG}
            ;;
         s) OPTION_SERIAL=YES
-           ;;
-        x) OPTION_EXEC=YES
            ;;
         a) OPTION_ADDRESS=${OPTARG}
            ;;
@@ -479,9 +478,13 @@ while getopts "n:i:k:sxa:r:" _option; do
     esac
 done
 
+if [ ! -t 0 ]; then
+    OPTION_SERIAL=YES
+fi
+
 shift $((${OPTIND} - 1))
 
-vm_fs=${vm_root_fs}/${vm_name}
+vm_fs=${vm_root_fs}/${OPTION_VM_NAME}
 
 vm_ostype=$(get_property ostype)
 vm_cores=$(get_property cores)
@@ -492,6 +495,13 @@ vm_boot_image=/dev/zvol/${vm_fs}/disk0
 
 [ -e ${vm_boot_image} ] || error "missing boot image (${vm_boot_image})."
 
-: ${vm_name} ${vm_ostype} ${vm_cores} ${vm_memory} ${vm_network}
+: ${vm_ostype} ${vm_cores} ${vm_memory} ${vm_network}
+
+case ${action} in
+    exec)
+        use_exec=YES
+        ;;
+    *)
+esac
 
 perform_${action} "$@"
