@@ -5,12 +5,13 @@ set -e -u
 BVM_PATH=$(dirname $(realpath $0))
 
 : ${OPTION_VM_NAME:=""}
-: ${OPTION_EXEC:=""}
 : ${OPTION_ISO:=""}
 : ${OPTION_KICKSTART:=""}
 : ${OPTION_SERIAL:=""}
 : ${OPTION_ADDRESS:=""}
 : ${OPTION_ROUTER:=""}
+
+use_exec=""
 
 which /usr/local/sbin/grub-bhyve >/dev/null 2>&1 || error "missing grub-bhyve."
 
@@ -27,12 +28,11 @@ usage()
     cat <<EOF
 Usage: bvm [ACTION] [OPTION...]
 
-Actions: kickstart | install | exec | finish | console
+Actions: kickstart | install | run | exec | finish | console
 
 Options:
 
     -n  VM name
-    -x  use exec(3) for running bhyve
     -i  ISO path
     -k  kickstart file
     -s  use nmdm(4) serial console
@@ -193,7 +193,7 @@ bhyve_load_freebsd()
 
             bhyveload -m ${vm_memory}M -d ${OPTION_ISO} ${_options} ${OPTION_VM_NAME}
             ;;
-        exec)
+        run|exec)
             bhyveload -m ${vm_memory}M -d ${vm_boot_image} ${OPTION_VM_NAME}
             ;;
         *)
@@ -213,7 +213,7 @@ bhyve_load_centos()
         install)
             grub_for_centos_install | grub_load ${mapfile} cd0 /nonexistent
             ;;
-        exec)
+        run|exec)
             grub_load ${mapfile} hd0,msdos1 /grub2
             ;;
         *)
@@ -235,7 +235,7 @@ bhyve_load_debian()
         install)
             grub_for_debian_install | grub_load ${mapfile} cd0 /nonexistent
             ;;
-        exec)
+        run|exec)
             grub_load ${mapfile} hd0,msdos1 /boot/grub
             ;;
         *)
@@ -353,7 +353,7 @@ bhyve_exec()
 
     local _exec=""
 
-    if [ -n "${OPTION_EXEC}" ]; then
+    if [ -n "${use_exec}" ]; then
         _exec="exec "
     fi
 
@@ -389,7 +389,8 @@ EOF
     local _error=0
 
     {
-        perform_exec
+        bhyve_load
+        bhyve_exec
     } || {
         _error=$?
     }
@@ -407,13 +408,19 @@ perform_install()
 {
     [ -e ${OPTION_ISO} ] || error "ISO image not found (${OPTION_ISO})."
 
-    perform_exec
+    perform_run
+}
+
+perform_run()
+{
+    trap perform_finish EXIT
+
+    bhyve_load
+    bhyve_exec
 }
 
 perform_exec()
 {
-    trap perform_finish EXIT
-
     bhyve_load
     bhyve_exec
 }
@@ -464,8 +471,6 @@ while getopts "n:xi:k:sa:r:" _option; do
     case ${_option} in
         n) OPTION_VM_NAME=${OPTARG}
            ;;
-        x) OPTION_EXEC=YES
-           ;;
         i) OPTION_ISO=${OPTARG}
            ;;
         k) OPTION_KICKSTART=${OPTARG}
@@ -498,12 +503,5 @@ vm_boot_image=/dev/zvol/${vm_fs}/disk0
 [ -e ${vm_boot_image} ] || error "missing boot image (${vm_boot_image})."
 
 : ${vm_ostype} ${vm_cores} ${vm_memory} ${vm_network}
-
-case ${action} in
-    exec)
-    ;;
-    *)
-        OPTION_EXEC=""
-esac
 
 perform_${action} "$@"
