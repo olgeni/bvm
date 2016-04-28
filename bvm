@@ -388,20 +388,13 @@ EOF
 
     local _error=0
 
-    {
-        bhyve_load
-        bhyve_exec
-    } || {
-        _error=$?
-    }
+    perform_run
 
     pkill -F ${_lighttpd_pid}
 
     rm -f ${_lighttpd_root}/kickstart.cfg
 
     rmdir ${_lighttpd_root}
-
-    return ${_error}
 }
 
 perform_install()
