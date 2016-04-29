@@ -140,7 +140,7 @@ perform_destroy()
 
     local _vm_fs="${_vm_root_fs}/${_vm_name}"
 
-    zfs destroy -rv ${_vm_fs}
+    zfs destroy -r ${_vm_fs} > /dev/null 2>&1
 }
 
 perform_disk()
