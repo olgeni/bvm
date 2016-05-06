@@ -24,6 +24,7 @@ Usage: bvmctl [ACTION] [OPTION...]
 Actions:
 
     activate [FS]           activate ZFS filesystem for bvm management
+    list                    list virtual machines
     create [VM]             create virtual machine
     destroy [VM]            destroy virtual machine
     set [VM] [KEY] [VALUE]  set property
@@ -106,6 +107,17 @@ perform_get()
     local _vm_fs="${_vm_root_fs}/${_vm_name}"
 
     zfs get bvm:${_property} ${_vm_fs}
+}
+
+perform_list()
+{
+    if [ $(get_vm_root_fs | wc -l) -ne 1 ]; then
+        error "filesystem not properly configured."
+    fi
+
+    local _vm_root_fs=$(get_vm_root_fs)
+
+    zfs list -d 1 -H -o name ${_vm_root_fs} | sed -e "s@${_vm_root_fs}/@@" | grep -v "/"
 }
 
 perform_create()
