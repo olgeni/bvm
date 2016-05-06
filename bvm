@@ -414,6 +414,8 @@ perform_run()
 
 perform_exec()
 {
+    use_exec="YES"
+
     bhyve_load
     bhyve_exec
 }
