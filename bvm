@@ -439,7 +439,7 @@ perform_console()
     local _device="$(nmdm_base)-B"
 
     if [ -c ${_device} ]; then
-        kermit -l ${_device}
+        kermit -c -l ${_device}
     fi
 }
 
