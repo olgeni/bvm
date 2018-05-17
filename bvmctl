@@ -180,7 +180,7 @@ perform_disk()
         fi
     done
 
-    zfs create -b 4K -o volmode=dev -V ${_vol_size} -o compression=lz4 ${_vm_fs}/disk${_index}
+    zfs create -b 16K -o volmode=dev -V ${_vol_size}G -o compression=lz4 ${_vm_fs}/disk${_index}
 }
 
 perform_svinstall()
