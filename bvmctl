@@ -37,7 +37,7 @@ Properties:
     network  list of network bridges (bridge0,bridge1/00:00:00:00:00:00,...)
     cores    number of assigned cores
     memory   assigned memory in MBs
-    ostype   freebsd | centos7 | debian7 | debian8
+    ostype   freebsd | centos7 | debian7 | debian8 | debian9
 
 EOF
 }
