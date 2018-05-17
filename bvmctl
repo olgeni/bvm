@@ -195,7 +195,7 @@ perform_svinstall()
     cat << EOF > ${_service}/run
 #!/bin/sh
 exec 2>&1
-exec ${BVM_PATH}/bvm exec -n \$(basename \$(pwd)) -x
+exec ${BVM_PATH}/bvm exec -n \$(basename \$(pwd))
 EOF
 
     chmod 755 ${_service}/run

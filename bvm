@@ -461,7 +461,7 @@ action="$1"
 
 shift
 
-while getopts "n:xi:k:sa:r:" _option; do
+while getopts "n:i:k:sa:r:" _option; do
     case ${_option} in
         n) OPTION_VM_NAME=${OPTARG}
            ;;
