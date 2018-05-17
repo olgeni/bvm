@@ -288,7 +288,7 @@ bhyve_exec()
 
         check_bridge ${_bridge} || error "bridge interface does not exist (${_bridge})."
 
-        local _tap="$(ifconfig tap create)"
+        local _tap="$(ifconfig tap create description "bvm:${OPTION_VM_NAME}")"
 
         if [ -z "${_tap_list}" ]; then
             _tap_list="${_tap}"
