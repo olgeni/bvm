@@ -276,7 +276,6 @@ bhyve_exec()
     _devices="${_devices} -s 1:0,lpc"
 
     local _slot=2
-
     local _error=0
 
     for _item in $(echo "${vm_network}" | tr "," "\n"); do
